@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>好物選品｜精選商品</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    header {
+      background: #ee4d2d;
+      color: white;
+      text-align: center;
+      padding: 28px 15px;
+    }
+
+    header h1 { margin: 0 0 10px; }
+    header p { margin: 0; }
+
+    .search {
+      display: block;
+      width: calc(100% - 30px);
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 13px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: auto;
+      padding: 0 15px 30px;
+    }
+
+    h2 { font-size: 22px; }
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .product {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px #00000010;
+    }
+
+    .photo {
+      height: 125px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff0e9;
+      font-size: 55px;
+    }
+
+    .info { padding: 12px; }
+
+    .info h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .description {
+      color: #777;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .price {
+      color: #ee4d2d;
+      font-size: 21px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+
+    .buy {
+      display: block;
+      background: #ee4d2d;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      padding: 10px 5px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .buy:hover { background: #d84324; }
+
+    footer {
+      text-align: center;
+      padding: 25px 10px;
+      color: #888;
+      font-size: 13px;
+    }
+
+    @media (min-width: 650px) {
+      .products {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .photo { height: 180px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🛍️ 好物選品</h1>
+    <p>精選生活好物，讓購物更簡單！</p>
+  </header>
+
+  <input
+    class="search"
+    id="search"
+    type="search"
+    placeholder="🔍 搜尋你喜歡的商品..."
+    aria-label="搜尋商品"
+  >
+
+  <main>
+    <h2>🔥 精選商品</h2>
+
+    <div class="products" id="products">
+
+      <article class="product" data-name="居家收納盒">
+        <div class="photo">📦</div>
+        <div class="info">
+          <h3>居家收納盒</h3>
+          <div class="description">整理生活空間，讓環境更整潔。</div>
+          <div class="price">NT$ 199</div>
+          <a class="buy" href="https://shopee.tw/" target="_blank" rel="noopener noreferrer">前往蝦皮選購</a>
+        </div>
+      </article>
+
+      <article class="product" data-name="生活水杯">
+        <div class="photo">🥤</div>
+        <div class="info">
+          <h3>生活水杯</h3>
+          <div class="description">簡約實用，日常飲水好幫手。</div>
+          <div class="price">NT$ 299</div>
+          <a class="buy" href="https://shopee.tw/" target="_blank" rel="noopener noreferrer">前往蝦皮選購</a>
+        </div>
+      </article>
+
+      <article class="product" data-name="桌面小夜燈">
+        <div class="photo">💡</div>
+        <div class="info">
+          <h3>桌面小夜燈</h3>
+          <div class="description">柔和燈光，營造溫暖氣氛。</div>
+          <div class="price">NT$ 159</div>
+          <a class="buy" href="https://shopee.tw/" target="_blank" rel="noopener noreferrer">前往蝦皮選購</a>
+        </div>
+      </article>
+
+      <article class="product" data-name="購物袋">
+        <div class="photo">🛍️</div>
+        <div class="info">
+          <h3>日常購物袋</h3>
+          <div class="description">外出購物方便攜帶。</div>
+          <div class="price">NT$ 99</div>
+          <a class="buy" href="https://shopee.tw/" target="_blank" rel="noopener noreferrer">前往蝦皮選購</a>
+        </div>
+      </article>
+
+      <article class="product" data-name="無線耳機">
+        <div class="photo">🎧</div>
+        <div class="info">
+          <h3>無線耳機</h3>
+          <div class="description">日常聆聽音樂，輕鬆享受生活。</div>
+          <div class="price">NT$ 399</div>
+          <a class="buy" href="https://shopee.tw/" target="_blank" rel="noopener noreferrer">前往蝦皮選購</a>
+        </div>
+      </article>
+
+      <article class="product" data-name="手機支架">
+        <div class="photo">📱</div>
+        <div class="info">
+          <h3>手機支架</h3>
+          <div class="description">追劇、視訊都方便。</div>
+          <div class="price">NT$ 129</div>
+          <a class="buy" href="https://shopee.tw/" target="_blank" rel="noopener noreferrer">前往蝦皮選購</a>
+        </div>
+      </article>
+
+    </div>
+    <p id="empty" style="display:none;text-align:center;">找不到相關商品。</p>
+  </main>
+
+  <footer>
+    <p>好物選品｜精選生活好物</p>
+    <p>商品價格為展示範例，實際價格以蝦皮頁面為準。</p>
+  </footer>
+
+  <script>
+    const search = document.getElementById("search");
+    const products = document.querySelectorAll(".product");
+    const empty = document.getElementById("empty");
+
+    search.addEventListener("input", function () {
+      const keyword = search.value.trim().toLowerCase();
+      let count = 0;
+
+      products.forEach(function (product) {
+        const name = product.dataset.name.toLowerCase();
+        const visible = name.includes(keyword);
+        product.style.display = visible ? "" : "none";
+        if (visible) count++;
+      });
+
+      empty.style.display = count === 0 ? "block" : "none";
+    });
+  </script>
+</body>
+</html>
