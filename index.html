@@ -2,6 +2,252 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>好物選品｜50款精選好物</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f6f6f6;color:#333;font-family:Arial,"Noto Sans TC",sans-serif}
+header{background:#ee4d2d;color:white;text-align:center;padding:28px 15px}
+header h1{margin:0 0 8px;font-size:28px}
+header p{margin:0;font-size:14px}
+.wrap{max-width:1100px;margin:auto;padding:16px}
+.search{width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font-size:16px;background:white}
+.categories{display:flex;gap:8px;overflow-x:auto;padding:15px 0}
+.cat{white-space:nowrap;border:1px solid #ddd;background:white;border-radius:20px;padding:9px 15px;cursor:pointer}
+.cat.active,.cat:hover{background:#ee4d2d;color:white;border-color:#ee4d2d}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.heading h2{font-size:21px}
+#count{color:#777;font-size:13px}
+.products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:white;border-radius:11px;overflow:hidden;box-shadow:0 2px 8px #0000000c}
+.photo{width:100%;height:150px;object-fit:cover;background:#eee;display:block}
+.info{padding:12px}
+.tag{font-size:11px;color:#ee4d2d;background:#fff0eb;padding:4px 7px;border-radius:5px}
+.name{font-size:15px;line-height:1.5;margin:10px 0 6px;min-height:44px}
+.desc{font-size:12px;color:#888;line-height:1.5}
+.price{font-size:21px;font-weight:bold;color:#ee4d2d;margin:12px 0}
+.buy{display:block;text-align:center;background:#ee4d2d;color:white;text-decoration:none;border-radius:7px;padding:11px 4px;font-size:14px}
+.buy:hover{background:#d94323}
+.pages{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;padding:24px 0}
+.pages button{border:1px solid #ddd;background:white;padding:10px 13px;border-radius:7px;cursor:pointer}
+.pages button.active{background:#ee4d2d;color:white}
+.pages button:disabled{opacity:.4;cursor:not-allowed}
+#empty{text-align:center;color:#888;padding:35px;display:none}
+footer{text-align:center;color:#888;font-size:12px;padding:25px}
+@media(min-width:650px){.products{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.photo{height:200px}}
+@media(min-width:950px){.products{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header>
+<h1>🛍️ 好物選品</h1>
+<p>50 款生活好物｜輕鬆找到喜歡的商品</p>
+</header>
+
+<main class="wrap">
+<input id="search" class="search" type="search" placeholder="🔍 搜尋商品名稱或分類...">
+<nav class="categories" id="categories"></nav>
+<div class="heading">
+<h2>🔥 精選商品</h2>
+<span id="count"></span>
+</div>
+<div class="products" id="products"></div>
+<div id="empty">找不到符合條件的商品，試試其他關鍵字。</div>
+<div class="pages" id="pages"></div>
+</main>
+
+<footer>
+<p>好物選品｜精選生活好物</p>
+<p>展示商品與價格僅供示範，實際商品資訊請以賣場為準。</p>
+</footer>
+
+<script>
+const productsData = [
+["居家收納盒","居家生活",199,"📦"],
+["實用生活水杯","居家生活",299,"🥤"],
+["桌面小夜燈","居家生活",159,"💡"],
+["日常購物袋","居家生活",99,"🛍️"],
+["無線耳機","3C配件",399,"🎧"],
+["手機支架","3C配件",129,"📱"],
+["快充充電線","3C配件",99,"🔌"],
+["手機保護殼","3C配件",149,"📱"],
+["無線滑鼠","3C配件",299,"🖱️"],
+["筆記型電腦支架","3C配件",399,"💻"],
+["保溫隨行杯","居家生活",259,"☕"],
+["香氛蠟燭","居家生活",189,"🕯️"],
+["抱枕","居家生活",229,"🛋️"],
+["桌面整理架","居家生活",179,"🗂️"],
+["衣物收納袋","居家生活",119,"🧺"],
+["廚房瀝水架","居家生活",199,"🍽️"],
+["多功能掛勾","居家生活",79,"🪝"],
+["浴室置物架","居家生活",219,"🧴"],
+["床頭閱讀燈","居家生活",259,"💡"],
+["折疊收納箱","居家生活",299,"📦"],
+["帆布側背包","時尚配件",359,"👜"],
+["簡約皮夾","時尚配件",249,"👛"],
+["棒球帽","時尚配件",199,"🧢"],
+["時尚太陽眼鏡","時尚配件",229,"🕶️"],
+["日常手提包","時尚配件",399,"👜"],
+["簡約手錶","時尚配件",499,"⌚"],
+["保暖圍巾","時尚配件",199,"🧣"],
+["旅行收納包","時尚配件",159,"🧳"],
+["輕便雨傘","時尚配件",179,"☂️"],
+["卡片收納夾","時尚配件",99,"💳"],
+["洗臉起泡網","美妝保養",59,"🧼"],
+["化妝收納盒","美妝保養",199,"💄"],
+["化妝刷具組","美妝保養",229,"🖌️"],
+["隨身鏡","美妝保養",89,"🪞"],
+["護膚分裝瓶","美妝保養",99,"🧴"],
+["髮圈組合","美妝保養",69,"🎀"],
+["按摩梳","美妝保養",129,"💆"],
+["旅行化妝包","美妝保養",159,"👝"],
+["桌上小風扇","3C配件",299,"🌀"],
+["藍牙喇叭","3C配件",499,"🔊"],
+["瑜伽墊","運動休閒",399,"🧘"],
+["運動水壺","運動休閒",199,"🚰"],
+["跳繩","運動休閒",99,"🏃"],
+["旅行頸枕","運動休閒",229,"✈️"],
+["露營小燈","運動休閒",259,"🏕️"],
+["寵物玩具","寵物用品",99,"🐾"],
+["寵物食碗","寵物用品",159,"🐶"],
+["寵物梳毛刷","寵物用品",129,"🐱"],
+["多功能文具組","文具用品",149,"✏️"],
+["筆記本","文具用品",89,"📒"]
+];
+
+const imageSets = {
+"居家生活":[
+"https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=600&q=80"
+],
+"3C配件":[
+"https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=600&q=80"
+],
+"時尚配件":[
+"https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80"
+],
+"美妝保養":[
+"https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-160 космет?auto=format&fit=crop&w=600&q=80"
+],
+"運動休閒":[
+"https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80"
+],
+"寵物用品":[
+"https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=600&q=80"
+],
+"文具用品":[
+"https://images.unsplash.com/photo-1455390582262-044c bade8f?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=600&q=80",
+"https://images.unsplash.com/photo-1453738773917-9c3eff1db985?auto=format&fit=crop&w=600&q=80"
+]
+};
+
+const products = productsData.map((p,i)=>({
+id:i+1,name:p[0],category:p[1],price:p[2],emoji:p[3],
+image:imageSets[p[1]][i%imageSets[p[1]].length]
+}));
+
+const categories=["全部商品",...new Set(products.map(p=>p.category))];
+let activeCategory="全部商品";
+let currentPage=1;
+const perPage=10;
+const grid=document.getElementById("products");
+const pages=document.getElementById("pages");
+const search=document.getElementById("search");
+const count=document.getElementById("count");
+const empty=document.getElementById("empty");
+
+function renderCategories(){
+ const nav=document.getElementById("categories");
+ nav.innerHTML="";
+ categories.forEach(cat=>{
+  const b=document.createElement("button");
+  b.className="cat"+(cat===activeCategory?" active":"");
+  b.textContent=cat;
+  b.onclick=()=>{activeCategory=cat;currentPage=1;renderCategories();render();};
+  nav.appendChild(b);
+ });
+}
+
+function render(){
+ const keyword=search.value.trim().toLowerCase();
+ const filtered=products.filter(p=>
+  (activeCategory==="全部商品"||p.category===activeCategory)&&
+  (p.name.toLowerCase().includes(keyword)||p.category.toLowerCase().includes(keyword))
+ );
+ const totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
+ currentPage=Math.min(currentPage,totalPages);
+ const shown=filtered.slice((currentPage-1)*perPage,currentPage*perPage);
+ count.textContent="共 "+filtered.length+" 件商品";
+ grid.innerHTML="";
+ empty.style.display=filtered.length?"none":"block";
+
+ shown.forEach(p=>{
+  const card=document.createElement("article");
+  card.className="card";
+  const img=document.createElement("img");
+  img.className="photo";
+  img.src=p.image;
+  img.alt=p.name;
+  img.loading="lazy";
+  img.onerror=()=>{img.onerror=null;img.src="https://placehold.co/600x400/fce9e3/ee4d2d?text="+encodeURIComponent(p.emoji+" "+p.name);};
+  const info=document.createElement("div");
+  info.className="info";
+  const tag=document.createElement("span");
+  tag.className="tag";tag.textContent=p.category;
+  const title=document.createElement("h3");
+  title.className="name";title.textContent=p.name;
+  const desc=document.createElement("div");
+  desc.className="desc";desc.textContent="精選生活好物，簡約實用。";
+  const price=document.createElement("div");
+  price.className="price";price.textContent="NT$ "+p.price;
+  const buy=document.createElement("a");
+  buy.className="buy";buy.href="https://shopee.tw/";
+  buy.target="_blank";buy.rel="noopener noreferrer";
+  buy.textContent="前往蝦皮選購 ↗";
+  info.append(tag,title,desc,price,buy);
+  card.append(img,info);grid.appendChild(card);
+ });
+
+ pages.innerHTML="";
+ const prev=document.createElement("button");
+ prev.textContent="上一頁";prev.disabled=currentPage===1;
+ prev.onclick=()=>{currentPage--;render();};
+ pages.appendChild(prev);
+ for(let i=1;i<=totalPages;i++){
+  const b=document.createElement("button");
+  b.textContent=i;b.className=i===currentPage?"active":"";
+  b.onclick=()=>{currentPage=i;render();window.scrollTo({top:0,behavior:"smooth"});};
+  pages.appendChild(b);
+ }
+ const next=document.createElement("button");
+ next.textContent="下一頁";next.disabled=currentPage===totalPages;
+ next.onclick=()=>{currentPage++;render();window.scrollTo({top:0,behavior:"smooth"});};
+ pages.appendChild(next);
+}
+
+search.addEventListener("input",()=>{currentPage=1;render();});
+renderCategories();
+render();
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>好物選品｜精選商品</title>
