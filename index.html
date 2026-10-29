@@ -1,1 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>蝦皮好物推薦</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6f8;color:#222;
+font-family:Arial,"Noto Sans TC",sans-serif}
+header{background:#ee4d2d;color:white;padding:22px 14px;text-align:center}
+header h1{margin:0 0 8px;font-size:25px}
+header p{margin:0;font-size:14px}
+main{max-width:1100px;margin:auto;padding:15px}
+.search{width:100%;padding:13px;border:1px solid #ddd;
+border-radius:10px;font-size:16px;margin-bottom:12px}
+.categories{display:flex;gap:8px;overflow-x:auto;padding:3px 0 12px}
+.categories button{white-space:nowrap;border:0;border-radius:20px;
+padding:10px 14px;background:#fff;color:#333;cursor:pointer}
+.categories button.active{background:#ee4d2d;color:white}
+.tools{display:flex;align-items:center;justify-content:space-between;
+gap:10px;margin-bottom:14px;flex-wrap:wrap;font-size:14px}
+select{padding:9px;border:1px solid #ddd;border-radius:8px;background:white}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.product{background:white;border-radius:12px;overflow:hidden;
+box-shadow:0 2px 8px #0000000b;display:flex;flex-direction:column}
+.photo{height:120px;background:#fff0e9;display:flex;
+align-items:center;justify-content:center;font-size:48px}
+.info{padding:12px;display:flex;flex-direction:column;flex:1}
+.name{font-size:14px;line-height:1.5;overflow-wrap:anywhere;
+margin:0 0 8px;font-weight:600}
+.price{font-size:19px;font-weight:bold;color:#ee4d2d;margin-bottom:5px}
+.meta{font-size:12px;color:#777;line-height:1.7;margin-bottom:10px}
+.links{display:flex;gap:7px;margin-top:auto}
+.links a{flex:1;text-align:center;text-decoration:none;border-radius:7px;
+padding:10px 4px;font-size:13px}
+.buy{background:#f1f1f1;color:#333}
+.affiliate{background:#ee4d2d;color:white}
+.empty{grid-column:1/-1;text-align:center;padding:45px 10px;color:#777}
+footer{text-align:center;color:#888;font-size:12px;padding:25px 10px}
+@media(min-width:650px){
+.grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.photo{height:160px}
+}
+@media(min-width:950px){
+.grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛍️ 蝦皮好物推薦</h1>
+  <p>精選好物・方便搜尋・點擊查看商品</p>
+</header>
 
+<main>
+  <input id="search" class="search" type="search"
+    placeholder="🔍 搜尋商品名稱或商店名稱">
+
+  <div id="categories" class="categories"></div>
+
+  <div class="tools">
+    <span id="count">共 0 件商品</span>
+    <select id="sort">
+      <option value="default">預設排序</option>
+      <option value="low">價格由低到高</option>
+      <option value="high">價格由高到低</option>
+      <option value="sales">銷量由高到低</option>
+    </select>
+  </div>
+
+  <div id="products" class="grid"></div>
+</main>
+
+<footer>商品價格及庫存以蝦皮商品頁面為準。</footer>
+
+<script>
+const categories = [
+  "全部商品",
+  "美妝保養",
+  "居家生活",
+  "3C 電子",
+  "服飾配件",
+  "食品泡麵",
+  "其他商品"
+];
+
+/*
+  商品資料放在下面的 products 陣列。
+  每筆商品需要填入：
+  id：商品編號
+  name：商品名稱
+  price：價格（數字）
+  sales：銷量（數字）
+  shop：商店名稱
+  category：六大分類其中之一
+  productUrl：原商品連結
+  affiliateUrl：推廣連結
+
+  請填入真實商品資料，不要使用示範資料代替。
+*/
+const products = [];
+
+let activeCategory = "全部商品";
+
+const categoryBox = document.getElementById("categories");
+const productBox = document.getElementById("products");
+const searchBox = document.getElementById("search");
+const sortBox = document.getElementById("sort");
+const countBox = document.getElementById("count");
+
+function renderCategories() {
+  categoryBox.innerHTML = "";
+  categories.forEach(category => {
+    const button = document.createElement("button");
+    button.textContent = category;
+    button.className = category === activeCategory ? "active" : "";
+    button.onclick = () => {
+      activeCategory = category;
+      renderCategories();
+      renderProducts();
+    };
+    categoryBox.appendChild(button);
+  });
+}
+
+function safeLink(url) {
+  try {
+    const parsed = new URL(url);
+    return ["https:", "http:"].includes(parsed.protocol)
+      ? parsed.href : "#";
+  } catch {
+    return "#";
+  }
+}
+
+function renderProducts() {
+  const keyword = searchBox.value.trim().toLowerCase();
+
+  let list = products.filter(item => {
+    const matchesCategory =
+      activeCategory === "全部商品" ||
+      item.category === activeCategory;
+
+    const matchesKeyword =
+      String(item.name || "").toLowerCase().includes(keyword) ||
+      String(item.shop || "").toLowerCase().includes(keyword);
+
+    return matchesCategory && matchesKeyword;
+  });
+
+  if (sortBox.value === "low") {
+    list.sort((a,b) => Number(a.price || 0) - Number(b.price || 0));
+  } else if (sortBox.value === "high") {
+    list.sort((a,b) => Number(b.price || 0) - Number(a.price || 0));
+  } else if (sortBox.value === "sales") {
+    list.sort((a,b) => Number(b.sales || 0) - Number(a.sales || 0));
+  }
+
+  countBox.textContent = "共 " + list.length + " 件商品";
+  productBox.innerHTML = "";
+
+  if (list.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = products.length === 0
+      ? "網站程式已載入，請先加入商品資料。"
+      : "找不到符合條件的商品，請試試其他關鍵字。";
+    productBox.appendChild(empty);
+    return;
+  }
+
+  list.forEach(item => {
+    const card = document.createElement("article");
+    card.className = "product";
+
+    const photo = document.createElement("div");
+    photo.className = "photo";
+    photo.textContent = item.image ? "" : "🛍️";
+
+    if (item.image) {
+      const img = document.createElement("img");
+      img.src = safeLink(item.image);
+      img.alt = item.name || "商品圖片";
+      img.style.cssText =
+        "width:100%;height:100%;object-fit:contain";
+      img.onerror = () => { photo.textContent = "🛍️"; };
+      photo.appendChild(img);
+    }
+
+    const info = document.createElement("div");
+    info.className = "info";
+
+    const name = document.createElement("p");
+    name.className = "name";
+    name.textContent = item.name || "未提供商品名稱";
+
+    const price = document.createElement("div");
+    price.className = "price";
+    price.textContent = "NT$ " + Number(item.price || 0).toLocaleString();
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent =
+      (item.shop || "未提供商店名稱") +
+      "｜銷量：" + Number(item.sales || 0).toLocaleString();
+
+    const links = document.createElement("div");
+    links.className = "links";
+
+    const original = document.createElement("a");
+    original.className = "buy";
+    original.textContent = "查看商品";
+    original.href = safeLink(item.productUrl);
+    original.target = "_blank";
+    original.rel = "noopener noreferrer";
+
+    const affiliate = document.createElement("a");
+    affiliate.className = "affiliate";
+    affiliate.textContent = "前往購買";
+    affiliate.href = safeLink(item.affiliateUrl || item.productUrl);
+    affiliate.target = "_blank";
+    affiliate.rel = "noopener noreferrer";
+
+    links.append(original, affiliate);
+    info.append(name, price, meta, links);
+    card.append(photo, info);
+    productBox.appendChild(card);
+  });
+}
+
+searchBox.addEventListener("input", renderProducts);
+sortBox.addEventListener("change", renderProducts);
+
+renderCategories();
+renderProducts();
+</script>
+</body>
+</html>
