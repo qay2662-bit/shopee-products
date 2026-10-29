@@ -1,51 +1,3385 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="精選好物推薦，快速搜尋商品並前往蝦皮查看最新資訊。">
-  <title>好物推薦｜精選購物清單</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>商品列表</title>
+<style>
+  :root {
+    --primary: #ee4d2d;
+    --bg: #f5f5f5;
+    --card: #fff;
+    --text: #222;
+    --muted: #888;
+    --thumb-bg: #fff0ec;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 24px;
+  }
+
+  /* 分類標籤 */
+  .tabs {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 10px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    background: var(--bg);
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    padding: 10px 22px;
+    border-radius: 999px;
+    border: none;
+    background: #fff;
+    font-size: 15px;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .tab.active { background: var(--primary); color: #fff; font-weight: 600; }
+
+  .count { padding: 4px 16px 12px; font-size: 14px; color: var(--muted); }
+
+  /* 商品格線 */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 0 14px;
+  }
+  @media (min-width: 720px)  { .grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1000px) { .grid { grid-template-columns: repeat(4, 1fr); max-width: 1200px; margin: 0 auto; } }
+
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 12px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .thumb {
+    aspect-ratio: 1 / 0.63;
+    border-radius: 12px;
+    background: var(--thumb-bg);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb .ph { font-size: 44px; }
+
+  .cat { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--primary); }
+  .title {
+    margin-top: 6px;
+    font-size: 15px; font-weight: 700; line-height: 1.45;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(1.45em * 4);
+  }
+  .price { margin-top: 8px; font-size: 24px; font-weight: 800; color: var(--primary); }
+  .meta { margin-top: 6px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .meta .sku { color: #aaa; }
+
+  .actions { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .btn {
+    display: block; text-align: center; text-decoration: none;
+    padding: 11px 0; border-radius: 10px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .btn.ghost { border: 1px solid #ddd; background: #fff; color: var(--text); }
+  .btn.solid { border: 1px solid var(--primary); background: var(--primary); color: #fff; }
+  .btn:active { opacity: .8; }
+
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 0; }
+</style>
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner">
-      <div class="brand">🛍️ 好物推薦</div>
-      <p class="eyebrow">精選好物・輕鬆挑選</p>
-      <h1>找到你正在尋找的好物</h1>
-      <p class="subtitle">搜尋商品、瀏覽分類，點擊按鈕前往蝦皮查看商品詳情。</p>
-      <label class="search-wrap">
-        <span aria-hidden="true">🔎</span>
-        <input id="searchInput" type="search" placeholder="搜尋商品名稱或商店…" autocomplete="off">
-      </label>
-    </div>
-  </header>
 
-  <main class="container">
-    <section class="toolbar" aria-label="商品篩選">
-      <div>
-        <h2>精選商品</h2>
-        <p id="resultCount" class="muted">正在載入商品…</p>
-      </div>
-      <select id="sortSelect" aria-label="商品排序">
-        <option value="default">預設排序</option>
-        <option value="sales">銷售量由高到低</option>
-        <option value="name">商品名稱 A–Z</option>
-      </select>
-    </section>
+<nav class="tabs" id="tabs"></nav>
+<div class="count" id="count"></div>
+<main class="grid" id="grid"></main>
 
-    <nav id="categoryList" class="categories" aria-label="商品分類"></nav>
-    <section id="productGrid" class="product-grid" aria-live="polite"></section>
-    <p id="emptyState" class="empty-state" hidden>找不到符合條件的商品，請換個關鍵字或分類。</p>
-    <div class="load-row"><button id="loadMore" class="load-more" type="button">顯示更多商品</button></div>
-  </main>
+<script>
+  // ====== 商品資料（請替換成你自己的資料 / API）======
+  const products = [
+ {
+  "id": "47757086905",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原新生飲12入混搭多規賣場 膠原蛋白 青春活源萃取 孫藝珍代言",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "4,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/47757086905",
+  "buyUrl": "https://s.shopee.tw/30p7uX0YoF"
+ },
+ {
+  "id": "23064945813",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲6盒組(8入/盒) 孫藝珍代言",
+  "price": 3980,
+  "store": "m2美度官方旗艦店",
+  "sales": "6,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/23064945813",
+  "buyUrl": "https://s.shopee.tw/3VlOVRyenM"
+ },
+ {
+  "id": "16841511932",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲(8入/盒) x2盒 快充膠原飲 孫藝珍代言 小姐不熙娣推薦",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/16841511932",
+  "buyUrl": "https://s.shopee.tw/3LRyJ8zI8L"
+ },
+ {
+  "id": "44857082943",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原新生飲(8入/盒)x2盒 膠原蛋白 青春活源萃取 孫藝珍代言",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/44857082943",
+  "buyUrl": "https://s.shopee.tw/3qOEu3xO7S"
+ },
+ {
+  "id": "47609307448",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能薑黃暢飲凍 (2入/盒) 解酒果凍 (滿額贈品/加購贈品請勿直接下單)",
+  "price": 158,
+  "store": "m2美度官方旗艦店",
+  "sales": "3,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/47609307448",
+  "buyUrl": "https://s.shopee.tw/3g4ohky1SR"
+ },
+ {
+  "id": "18714197108",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原C粉(30入/盒)x2盒｜維生素C 幫助吸收",
+  "price": 1111,
+  "store": "m2美度官方旗艦店",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/18714197108",
+  "buyUrl": "https://s.shopee.tw/4B15Ifw7RY"
+ },
+ {
+  "id": "19047935652",
+  "category": "美妝保養",
+  "title": "【m2 美度-限購體驗組合】超能膠原飲(8入/盒)*1+超能膠原飲(4入/盒)*1 共12包 孫藝珍唯一指定",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "4萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/19047935652",
+  "buyUrl": "https://s.shopee.tw/40hf6MwkmX"
+ },
+ {
+  "id": "54357066373",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原新生飲(8入/盒)x6盒 贈超能膠原蔓越莓C｜膠原蛋白 青春活源萃取 孫藝珍代言",
+  "price": 4140,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/54357066373",
+  "buyUrl": "https://s.shopee.tw/4VdvhHuqle"
+ },
+ {
+  "id": "24365199295",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原水光飲 (8入/盒) X2盒  高效玻尿酸 孫藝珍代言",
+  "price": 990,
+  "store": "m2美度官方旗艦店",
+  "sales": "8,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/24365199295",
+  "buyUrl": "https://s.shopee.tw/4LKVUyvU6d"
+ },
+ {
+  "id": "28455904330",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能珍珠燕窩膠原飲禮盒(30入/盒)x3 贈 膠原C粉30入/水光飲8入/燕窩膠原飲8入/蔓越莓10入",
+  "price": 5064,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/28455904330",
+  "buyUrl": "https://s.shopee.tw/4qGm5tta5k"
+ },
+ {
+  "id": "42110616398",
+  "category": "美妝保養",
+  "title": "【m2 美度】珍珠燕窩膠原飲(8入/盒)x2｜蝦皮獨家販售 孫藝珍代言",
+  "price": 990,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/42110616398",
+  "buyUrl": "https://s.shopee.tw/4fxLtauDQj"
+ },
+ {
+  "id": "14797344558",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能珍珠燕窩膠原飲禮盒(30入/盒)｜2025燕窩升級不加價 蝦皮獨家販售 孫藝珍代言",
+  "price": 1688,
+  "store": "m2美度官方旗艦店",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/14797344558",
+  "buyUrl": "https://s.shopee.tw/5AtcUVsJPq"
+ },
+ {
+  "id": "25023044641",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲/晚安飲/水光飲12入混搭多規賣場 孫藝珍代言",
+  "price": 911,
+  "store": "m2美度官方旗艦店",
+  "sales": "7,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/25023044641",
+  "buyUrl": "https://s.shopee.tw/50aCICswkp"
+ },
+ {
+  "id": "27713190201",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原晚安飲 (8入/盒)x6盒-孫藝珍代言 夜亮飲 新品 全新上市 GABA",
+  "price": 3980,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/27713190201",
+  "buyUrl": "https://s.shopee.tw/BUwXKBLYu"
+ },
+ {
+  "id": "40753787034",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(6入/盒) 韓國原裝｜爆水炸彈膠囊",
+  "price": 179,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/40753787034",
+  "buyUrl": "https://s.shopee.tw/1BWL1Bytt"
+ },
+ {
+  "id": "20492750340",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原晚安飲 (8入/盒)x2盒-孫藝珍代言 夜亮飲 新品 全新上市 GABA",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "4,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/20492750340",
+  "buyUrl": "https://s.shopee.tw/W7mvwA4t0"
+ },
+ {
+  "id": "18148836451",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能窈窕錠EX(30錠/盒)x3+韓流超能馬甲錠EX(30錠/盒)x3",
+  "price": 1980,
+  "store": "m2美度官方旗艦店",
+  "sales": "7,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/18148836451",
+  "buyUrl": "https://s.shopee.tw/LoMjdAiDz"
+ },
+ {
+  "id": "28613777394",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原水光飲 (8入/盒) x6盒",
+  "price": 3111,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/28613777394",
+  "buyUrl": "https://s.shopee.tw/qkdKY8oD6"
+ },
+ {
+  "id": "43512763203",
+  "category": "美妝保養",
+  "title": "【m2 美度】珍珠燕窩膠原飲(8入/盒)x1+超能膠原水光飲 (8入/盒)x1｜蝦皮獨家販售 孫藝珍代言",
+  "price": 990,
+  "store": "m2美度官方旗艦店",
+  "sales": "467",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/43512763203",
+  "buyUrl": "https://s.shopee.tw/gRD8F9RY5"
+ },
+ {
+  "id": "23687321395",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原晚安飲 (8入/盒)x1 + 超能膠原晚安飲 (4入/盒)x1 共12包 膠原夜亮飲 孫藝珍代言",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/23687321395",
+  "buyUrl": "https://s.shopee.tw/1BNTjA7XXC"
+ },
+ {
+  "id": "43906711454",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原莓果果凍(50入/盒)x1盒",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "659",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/43906711454",
+  "buyUrl": "https://s.shopee.tw/1143Wr8AsB"
+ },
+ {
+  "id": "20295521751",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲 (8入/盒)x1+超能膠原晚安飲 (4入/盒)x1 共12包",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/20295521751",
+  "buyUrl": "https://s.shopee.tw/1W0K7m6GrI"
+ },
+ {
+  "id": "49408723466",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原加法膠囊 (30入/盒)x1/2盒",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "167",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/49408723466",
+  "buyUrl": "https://s.shopee.tw/1LgtvT6uCH"
+ },
+ {
+  "id": "22061781699",
+  "category": "美妝保養",
+  "title": "【m2 美度】膠原飲/晚安飲/新生飲(8入/任選2盒) 共16入 快充膠原夜亮飲 青春活原萃取 孫藝珍代言",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "858",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/22061781699",
+  "buyUrl": "https://s.shopee.tw/1qdAWO50BO"
+ },
+ {
+  "id": "25979215972",
+  "category": "美妝保養",
+  "title": "【m2 美度】膠原系列超能膠原飲(8入/盒)(滿額贈品/加購贈品請勿直接下單)",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "741",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/25979215972",
+  "buyUrl": "https://s.shopee.tw/1gJkK55dWN"
+ },
+ {
+  "id": "53661528704",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能馬甲果凍(50入/盒)x1盒 馬甲凍",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "241",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/53661528704",
+  "buyUrl": "https://s.shopee.tw/2BG0v03jVU"
+ },
+ {
+  "id": "21710117633",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能閃澱AB錠(30錠/盒)窈窕錠+馬甲錠各1盒",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/21710117633",
+  "buyUrl": "https://s.shopee.tw/20waih4MqT"
+ },
+ {
+  "id": "18443756894",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原C粉(30入/盒) x6 買三送三 贈爆水膠囊6入/新生飲4入",
+  "price": 3111,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/18443756894",
+  "buyUrl": "https://s.shopee.tw/2VsrJc2Spa"
+ },
+ {
+  "id": "57315541984",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能薑黃暢飲凍 (10入/盒) x3盒 解酒果凍",
+  "price": 990,
+  "store": "m2美度官方旗艦店",
+  "sales": "40",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/57315541984",
+  "buyUrl": "https://s.shopee.tw/2LZR7J36AZ"
+ },
+ {
+  "id": "29533620800",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(24入/盒)x5 韓國原裝 爆水膠囊",
+  "price": 3280,
+  "store": "m2美度官方旗艦店",
+  "sales": "707",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/29533620800",
+  "buyUrl": "https://s.shopee.tw/8AXE41gtKi"
+ },
+ {
+  "id": "24780420611",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲(8入/盒)買1送1(共16入) 混搭多規賣場 孫藝珍代言",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/24780420611",
+  "buyUrl": "https://s.shopee.tw/80DnrihWfh"
+ },
+ {
+  "id": "24465200333",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原水光飲 (8入/盒)x3盒+ 珍珠燕窩膠原飲(8入/盒)x3 高效玻尿酸 保濕有感 孫藝珍代言",
+  "price": 2880,
+  "store": "m2美度官方旗艦店",
+  "sales": "797",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/24465200333",
+  "buyUrl": "https://s.shopee.tw/8VA4Sdfceo"
+ },
+ {
+  "id": "25129217247",
+  "category": "美妝保養",
+  "title": "【m2 美度】膠原系列超能膠原晚安飲(8入/盒)(滿額贈品/加購贈品請勿直接下單)",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "511",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/25129217247",
+  "buyUrl": "https://s.shopee.tw/8KqeGKgFzn"
+ },
+ {
+  "id": "21348446644",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲 (8入/盒)x3盒 孫藝珍代言 快充膠原飲 女人我最大",
+  "price": 2500,
+  "store": "m2美度官方旗艦店",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/21348446644",
+  "buyUrl": "https://s.shopee.tw/8pmurFeLyu"
+ },
+ {
+  "id": "57957054281",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原新生飲(8入/盒)x3盒 膠原蛋白 青春活源萃取 孫藝珍代言",
+  "price": 2280,
+  "store": "m2美度官方旗艦店",
+  "sales": "292",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/57957054281",
+  "buyUrl": "https://s.shopee.tw/8fTUewezJt"
+ },
+ {
+  "id": "18450791377",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原C粉(30入)+珍珠燕窩膠原飲+超能膠原水光飲 2入體驗盒(2入/盒)",
+  "price": 780,
+  "store": "m2美度官方旗艦店",
+  "sales": "385",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/18450791377",
+  "buyUrl": "https://s.shopee.tw/9APlFrd5J0"
+ },
+ {
+  "id": "43850810670",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光水蜜桃果凍 (50入/盒)x1盒",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "479",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/43850810670",
+  "buyUrl": "https://s.shopee.tw/906L3Ydidz"
+ },
+ {
+  "id": "27263172263",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能窈窕錠EX/超能馬甲錠EX 升級版10盒組(各5盒)",
+  "price": 4880,
+  "store": "m2美度官方旗艦店",
+  "sales": "714",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/27263172263",
+  "buyUrl": "https://s.shopee.tw/9V2beTbod6"
+ },
+ {
+  "id": "16341513255",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲5盒組(8入/盒) 孫藝珍代言",
+  "price": 3450,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/16341513255",
+  "buyUrl": "https://s.shopee.tw/9KjBSAcRy5"
+ },
+ {
+  "id": "17093670163",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原飲/晚安飲/水光飲(4入/盒) 任選賣場",
+  "price": 399,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/17093670163",
+  "buyUrl": "https://s.shopee.tw/9pfS35aXxC"
+ },
+ {
+  "id": "27737354761",
+  "category": "美妝保養",
+  "title": "【m2 美度】珍珠燕窩膠原飲(8入/盒)+珍珠燕窩膠原飲+超能膠原水光飲 2入體驗盒(2入/盒)",
+  "price": 780,
+  "store": "m2美度官方旗艦店",
+  "sales": "652",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/27737354761",
+  "buyUrl": "https://s.shopee.tw/9fM1qmbBIB"
+ },
+ {
+  "id": "25133264576",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原B群糖衣錠(60錠/盒) 1盒/2盒/3盒/5盒 任選賣場",
+  "price": 990,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/25133264576",
+  "buyUrl": "https://s.shopee.tw/AAIIRhZHHI"
+ },
+ {
+  "id": "19351801984",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能馬甲錠EX(30錠/盒)x4/6盒",
+  "price": 1980,
+  "store": "m2美度官方旗艦店",
+  "sales": "516",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/19351801984",
+  "buyUrl": "https://s.shopee.tw/9zysFOZucH"
+ },
+ {
+  "id": "15771420725",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能窈窕錠EX(TRX燒卡錠) (30錠/盒) x 2盒  買一送一",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "582",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/15771420725",
+  "buyUrl": "https://s.shopee.tw/AUv8qJY0bO"
+ },
+ {
+  "id": "44604799444",
+  "category": "美妝保養",
+  "title": "【m2 美度】新客體驗-超能膠原C粉(30入/盒)x1+超能膠原飲(4入/盒)膠原飲/晚安飲/水光飲/新生飲 任選一",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "124",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/44604799444",
+  "buyUrl": "https://s.shopee.tw/AKbie0YdwN"
+ },
+ {
+  "id": "29533617628",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(24入/盒)x2 韓國原裝｜爆水炸彈膠囊",
+  "price": 1680,
+  "store": "m2美度官方旗艦店",
+  "sales": "490",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/29533617628",
+  "buyUrl": "https://s.shopee.tw/5VWSt7r2kS"
+ },
+ {
+  "id": "12597437149",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原系列單入任選賣場 膠原飲 孫藝珍代言 小姐不熙娣 小咪 醫生好辣 劉涵竹 女人我最大 小布",
+  "price": 388,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/12597437149",
+  "buyUrl": "https://s.shopee.tw/5LD2gorg5R"
+ },
+ {
+  "id": "55414730940",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能持續型複合C膠囊(30顆/袋) 買1送1組",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "28",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/55414730940",
+  "buyUrl": "https://s.shopee.tw/5q9JHjpm4Y"
+ },
+ {
+  "id": "45908718833",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原加法膠囊 (30入/盒)x4盒/x5盒 孫藝珍代言",
+  "price": 3111,
+  "store": "m2美度官方旗艦店",
+  "sales": "93",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/45908718833",
+  "buyUrl": "https://s.shopee.tw/5fpt5QqPPX"
+ },
+ {
+  "id": "42332134362",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能果凍系列(50入/盒) x2盒｜超能水光/超能膠原/超能馬甲 任選賣場",
+  "price": 1588,
+  "store": "m2美度官方旗艦店",
+  "sales": "61",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/42332134362",
+  "buyUrl": "https://s.shopee.tw/6Am9gLoVOe"
+ },
+ {
+  "id": "24619639997",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原水光飲(8入/盒)+珍珠燕窩膠原飲+超能膠原水光飲 2入體驗盒(2入/盒)",
+  "price": 780,
+  "store": "m2美度官方旗艦店",
+  "sales": "157",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/24619639997",
+  "buyUrl": "https://s.shopee.tw/60SjU2p8jd"
+ },
+ {
+  "id": "24129217497",
+  "category": "美妝保養",
+  "title": "【m2 美度】膠原系列超能膠原水光飲(8入/盒)(滿額贈品/加購贈品請勿直接下單)",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "444",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/24129217497",
+  "buyUrl": "https://s.shopee.tw/6VP04xnEik"
+ },
+ {
+  "id": "16473896085",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能馬甲錠EX(30錠/盒) x2盒  買一送一",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "475",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/16473896085",
+  "buyUrl": "https://s.shopee.tw/6L5Zsens3j"
+ },
+ {
+  "id": "23479250373",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原晚安飲 (8入/盒)x5盒-孫藝珍代言 夜亮飲 新品 全新上市 GABA",
+  "price": 3450,
+  "store": "m2美度官方旗艦店",
+  "sales": "571",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/23479250373",
+  "buyUrl": "https://s.shopee.tw/6q1qTZly2q"
+ },
+ {
+  "id": "55351636264",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能蔓越莓C(10入/盒) - 1盒/2盒/3盒/5盒 任選賣場｜新品搶先體驗",
+  "price": 799,
+  "store": "m2美度官方旗艦店",
+  "sales": "191",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/55351636264",
+  "buyUrl": "https://s.shopee.tw/6fiQHGmbNp"
+ },
+ {
+  "id": "22179252642",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原晚安飲 (8入/盒)x3盒-孫藝珍代言 夜亮飲 新品 全新上市 GABA",
+  "price": 2500,
+  "store": "m2美度官方旗艦店",
+  "sales": "402",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/22179252642",
+  "buyUrl": "https://s.shopee.tw/7AegsBkhMw"
+ },
+ {
+  "id": "24015200849",
+  "category": "美妝保養",
+  "title": "【m2美度】超能康普茶 無糖紅茶(10入/盒)X2盒",
+  "price": 799,
+  "store": "m2美度官方旗艦店",
+  "sales": "14",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/24015200849",
+  "buyUrl": "https://s.shopee.tw/70LGfslKhv"
+ },
+ {
+  "id": "22389878722",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原莓果果凍 買1送1組(10入/盒)",
+  "price": 688,
+  "store": "m2美度官方旗艦店",
+  "sales": "563",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/22389878722",
+  "buyUrl": "https://s.shopee.tw/7VHXGnjQh2"
+ },
+ {
+  "id": "17641508905",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能窈窕錠EX(TRX燒卡錠) (30錠/盒)x4/6盒",
+  "price": 1980,
+  "store": "m2美度官方旗艦店",
+  "sales": "783",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/17641508905",
+  "buyUrl": "https://s.shopee.tw/7Ky74Uk421"
+ },
+ {
+  "id": "29733608372",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(24入/盒)x1 韓國原裝｜爆水炸彈膠囊",
+  "price": 880,
+  "store": "m2美度官方旗艦店",
+  "sales": "257",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/29733608372",
+  "buyUrl": "https://s.shopee.tw/7puNfPiA18"
+ },
+ {
+  "id": "29327453720",
+  "category": "美妝保養",
+  "title": "【m2 美度】極羨益生菌(10入/盒)x2盒 買一送一",
+  "price": 799,
+  "store": "m2美度官方旗艦店",
+  "sales": "74",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/29327453720",
+  "buyUrl": "https://s.shopee.tw/7faxT6inM7"
+ },
+ {
+  "id": "48163099768",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能薑黃暢飲凍 (10入/盒) x5盒 解酒果凍",
+  "price": 888,
+  "store": "m2美度官方旗艦店",
+  "sales": "24",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/48163099768",
+  "buyUrl": "https://s.shopee.tw/2gCHVv1pVA"
+ },
+ {
+  "id": "27433613073",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(24入/盒)x3 韓國原裝｜爆水炸彈膠囊",
+  "price": 2280,
+  "store": "m2美度官方旗艦店",
+  "sales": "195",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/27433613073",
+  "buyUrl": "https://s.shopee.tw/2qVhiE1CAD"
+ },
+ {
+  "id": "56353251717",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能馬甲果凍(7入/盒)x2盒 買一送一｜馬甲凍 新品搶先體驗",
+  "price": 799,
+  "store": "m2美度官方旗艦店",
+  "sales": "171",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/56353251717",
+  "buyUrl": "https://s.shopee.tw/30p7uX0YpG"
+ },
+ {
+  "id": "50415926953",
+  "category": "美妝保養",
+  "title": "【m2美度】BETTER ME 西梅康普順暢飲(7入/盒)",
+  "price": 599,
+  "store": "m2美度官方旗艦店",
+  "sales": "11",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/50415926953",
+  "buyUrl": "https://s.shopee.tw/3B8Y6pzvUJ"
+ },
+ {
+  "id": "44965948528",
+  "category": "美妝保養",
+  "title": "【m2美度】BETTER ME 薑汁檸檬代謝飲(7入/盒)",
+  "price": 599,
+  "store": "m2美度官方旗艦店",
+  "sales": "6",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/44965948528",
+  "buyUrl": "https://s.shopee.tw/3LRyJ8zI9M"
+ },
+ {
+  "id": "40381240143",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能薑黃暢飲凍 (10入/盒) x2盒 解酒果凍",
+  "price": 688,
+  "store": "m2美度官方旗艦店",
+  "sales": "78",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/40381240143",
+  "buyUrl": "https://s.shopee.tw/3VlOVRyeoP"
+ },
+ {
+  "id": "52565927448",
+  "category": "美妝保養",
+  "title": "【m2美度】 BETTER ME 蘋果枸杞亮妍飲(7入/盒)",
+  "price": 599,
+  "store": "m2美度官方旗艦店",
+  "sales": "10",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/52565927448",
+  "buyUrl": "https://s.shopee.tw/3g4ohky1TS"
+ },
+ {
+  "id": "54766908205",
+  "category": "美妝保養",
+  "title": "【m2 美度】DAY 13:00 輕盈水光組｜超能膠原水光飲8入x2盒+西梅康普順暢飲7入x2盒",
+  "price": 2499,
+  "store": "m2美度官方旗艦店",
+  "sales": "1",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/54766908205",
+  "buyUrl": "https://s.shopee.tw/3qOEu3xO8V"
+ },
+ {
+  "id": "53051645750",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能馬甲果凍3盒任選多規賣場｜馬甲凍 薑黃暢飲凍 解酒果凍 新品搶先體驗",
+  "price": 1111,
+  "store": "m2美度官方旗艦店",
+  "sales": "29",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/53051645750",
+  "buyUrl": "https://s.shopee.tw/40hf6MwknY"
+ },
+ {
+  "id": "45358718925",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原加法膠囊 (30入/盒)x10盒 孫藝珍代言",
+  "price": 7111,
+  "store": "m2美度官方旗艦店",
+  "sales": "7",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/45358718925",
+  "buyUrl": "https://s.shopee.tw/4B15Ifw7Sb"
+ },
+ {
+  "id": "41701860719",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(24入/盒)x10 韓國原裝｜爆水炸彈膠囊",
+  "price": 7080,
+  "store": "m2美度官方旗艦店",
+  "sales": "9",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/41701860719",
+  "buyUrl": "https://s.shopee.tw/4LKVUyvU7e"
+ },
+ {
+  "id": "41472634799",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能水光精粹軟膠囊(6入/盒) (滿額贈品/加購贈品請勿直接下單)",
+  "price": 480,
+  "store": "m2美度官方旗艦店",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/41472634799",
+  "buyUrl": "https://s.shopee.tw/4VdvhHuqmh"
+ },
+ {
+  "id": "52407066181",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原新生飲(8入/盒)x1盒 膠原蛋白 青春活源萃取 孫藝珍代言",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "16",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/52407066181",
+  "buyUrl": "https://s.shopee.tw/4fxLtauDRk"
+ },
+ {
+  "id": "53266916878",
+  "category": "美妝保養",
+  "title": "【m2 美度】AM 10:00 晨間新生組｜超能膠原新生飲8入x2盒＋薑汁檸檬代謝飲7入x2盒",
+  "price": 2499,
+  "store": "m2美度官方旗艦店",
+  "sales": "3",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/53266916878",
+  "buyUrl": "https://s.shopee.tw/4qGm5tta6n"
+ },
+ {
+  "id": "52116904397",
+  "category": "美妝保養",
+  "title": "【m2 美度】ANYTIME 16:00 亮妍補給組｜經典超能膠原飲8入x2盒+蘋果枸杞亮妍飲7入x2盒",
+  "price": 2499,
+  "store": "m2美度官方旗艦店",
+  "sales": "1",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/52116904397",
+  "buyUrl": "https://s.shopee.tw/50aCICswlq"
+ },
+ {
+  "id": "46016937423",
+  "category": "美妝保養",
+  "title": "【m2 美度】PM 22:00 暖暖晚安組｜超能膠原晚安飲8入x2盒+薑汁檸檬代謝飲7入x2盒",
+  "price": 2499,
+  "store": "m2美度官方旗艦店",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/46016937423",
+  "buyUrl": "https://s.shopee.tw/5AtcUVsJQt"
+ },
+ {
+  "id": "42831201892",
+  "category": "美妝保養",
+  "title": "【m2 美度】 m2 美度 X MIRAE 未來美  超能膠原新生面膜(3片/盒) (滿額贈品/加購贈品請勿直接下單)",
+  "price": 599,
+  "store": "m2美度官方旗艦店",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/42831201892",
+  "buyUrl": "https://s.shopee.tw/1BWL1Byuu"
+ },
+ {
+  "id": "41829989525",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原加法膠囊 (30入/盒)x6盒 孫藝珍代言",
+  "price": 6320,
+  "store": "m2美度官方旗艦店",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/41829989525",
+  "buyUrl": "https://s.shopee.tw/BUwXKBLZx"
+ },
+ {
+  "id": "26115034861",
+  "category": "美妝保養",
+  "title": "【m2 美度】水光水蜜桃果凍 買1送1組(10入/盒)",
+  "price": 688,
+  "store": "m2美度官方旗艦店",
+  "sales": "448",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/26115034861",
+  "buyUrl": "https://s.shopee.tw/LoMjdAiF0"
+ },
+ {
+  "id": "18013800504",
+  "category": "美妝保養",
+  "title": "【m2 美度】韓流超能窈窕錠EX(30錠/盒)/超能馬甲錠EX(30錠/盒)-新版燒卡AB錠 任選賣場",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "702",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/18013800504",
+  "buyUrl": "https://s.shopee.tw/W7mvwA4u3"
+ },
+ {
+  "id": "53551868037",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能馬甲果凍(7入/盒)｜馬甲凍 新品搶先體驗",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "2",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/53551868037",
+  "buyUrl": "https://s.shopee.tw/gRD8F9RZ6"
+ },
+ {
+  "id": "57503242378",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能馬甲果凍(7入/盒)x5盒｜馬甲凍 新品搶先體驗",
+  "price": 2280,
+  "store": "m2美度官方旗艦店",
+  "sales": "32",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/57503242378",
+  "buyUrl": "https://s.shopee.tw/qkdKY8oE9"
+ },
+ {
+  "id": "54907400420",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原新生飲 膠原蛋白 青春活源萃取 (1入/盒) 滿額贈贈品 請勿下單",
+  "price": 199,
+  "store": "m2美度官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/54907400420",
+  "buyUrl": "https://s.shopee.tw/1143Wr8AtC"
+ },
+ {
+  "id": "55569176344",
+  "category": "美妝保養",
+  "title": "【m2 美度】My Melody美麗旋律膠原飲 兩盒組(8入/2盒)  買一送一",
+  "price": 1380,
+  "store": "m2美度官方旗艦店",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/55569176344",
+  "buyUrl": "https://s.shopee.tw/1BNTjA7XYF"
+ },
+ {
+  "id": "57719176296",
+  "category": "美妝保養",
+  "title": "【m2 美度】My Melody美麗旋律30入獨享盒 (30入/盒) 膠原飲 盲盒 孫藝珍代言｜加贈美力旋律吊飾包x1",
+  "price": 2680,
+  "store": "m2美度官方旗艦店",
+  "sales": "3",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/57719176296",
+  "buyUrl": "https://s.shopee.tw/1LgtvT6uDI"
+ },
+ {
+  "id": "56819109132",
+  "category": "美妝保養",
+  "title": "BETTER ME 西梅康普順暢飲/薑汁檸檬代謝飲/蘋果枸杞亮妍飲(7入/任選2盒) 買一送一",
+  "price": 680,
+  "store": "m2美度官方旗艦店",
+  "sales": "2",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/56819109132",
+  "buyUrl": "https://s.shopee.tw/1W0K7m6GsL"
+ },
+ {
+  "id": "50819112557",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能膠原C粉(30入/盒) x11 買四送七",
+  "price": 5111,
+  "store": "m2美度官方旗艦店",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/50819112557",
+  "buyUrl": "https://s.shopee.tw/1gJkK55dXO"
+ },
+ {
+  "id": "49769184928",
+  "category": "美妝保養",
+  "title": "【m2 美度】My Melody美麗旋律膠原飲 (8入/盒)",
+  "price": 980,
+  "store": "m2美度官方旗艦店",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/49769184928",
+  "buyUrl": "https://s.shopee.tw/1qdAWO50CR"
+ },
+ {
+  "id": "47619124417",
+  "category": "美妝保養",
+  "title": "BETTER ME 西梅康普順暢飲/薑汁檸檬代謝飲/蘋果枸杞亮妍飲(7入/任選12盒) 囤貨組",
+  "price": 3111,
+  "store": "m2美度官方旗艦店",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/47619124417",
+  "buyUrl": "https://s.shopee.tw/20waih4MrU"
+ },
+ {
+  "id": "43322629706",
+  "category": "美妝保養",
+  "title": "【m2 美度】珍珠燕窩膠原飲(8入/盒)x24盒｜192包囤貨組 蝦皮獨家販售 孫藝珍代言",
+  "price": 12000,
+  "store": "m2美度官方旗艦店",
+  "sales": "61",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/43322629706",
+  "buyUrl": "https://s.shopee.tw/2BG0v03jWX"
+ },
+ {
+  "id": "40885106696",
+  "category": "美妝保養",
+  "title": "【m2 美度】超能蔓越莓C(10入/盒)x12盒",
+  "price": 2111,
+  "store": "m2美度官方旗艦店",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/727790736/40885106696",
+  "buyUrl": "https://s.shopee.tw/2LZR7J36Ba"
+ },
+ {
+  "id": "24641724962",
+  "category": "泡麵食品",
+  "title": "日本泡麵系列 日本全家限定 FamilyMart 全家泡麵 日本泡麵 日本拉麵 即時泡麵 超商泡麵",
+  "price": 100,
+  "store": "京昇日本代購🇯🇵",
+  "sales": "28",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/9444837/24641724962",
+  "buyUrl": "https://s.shopee.tw/2BG0vd9ltW"
+ },
+ {
+  "id": "24591742755",
+  "category": "泡麵食品",
+  "title": "🍜 日本7-11泡麵 🍜  7-ELEVEN 超商泡麵 7-11泡麵 日本泡麵 日本拉麵 即食泡麵",
+  "price": 110,
+  "store": "京昇日本代購🇯🇵",
+  "sales": "55",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/9444837/24591742755",
+  "buyUrl": "https://s.shopee.tw/20wajKAPEV"
+ },
+ {
+  "id": "24482405254",
+  "category": "泡麵食品",
+  "title": "🥬全素🥬不含五辛🥬 韓國 🇰🇷 炸醬泡麵 韓式炸醬麵 不含五辛素 Vegan 炸醬麵 素食泡麵 大米泡麵 韓國泡麵",
+  "price": 85,
+  "store": "🇹🇼韓國人幫你買🇹🇼",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1053965147/24482405254",
+  "buyUrl": "https://s.shopee.tw/W7mwZG7HE"
+ },
+ {
+  "id": "28530265147",
+  "category": "泡麵食品",
+  "title": "台灣現貨 日本 代購 Tabete 拉麵 日本拉麵 日本泡麵 泡麵 柚子鹽拉麵 扇貝高湯麵 柚子泡麵 日式泡麵 日式拉麵",
+  "price": 83,
+  "store": "原居HOME",
+  "sales": "618",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/5034434/28530265147",
+  "buyUrl": "https://s.shopee.tw/LoMkGGkcD"
+ },
+ {
+  "id": "29219951536",
+  "category": "泡麵食品",
+  "title": "[L.S.] (現+預) Paik Cook 白種元泡麵 白拉麵 特製泡麵 炸醬拉麵 白鍾元泡麵 韓國泡麵",
+  "price": 225,
+  "store": "玖玖工作室",
+  "sales": "189",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/34982363/29219951536",
+  "buyUrl": "https://s.shopee.tw/BUwXxHNxC"
+ },
+ {
+  "id": "57357346371",
+  "category": "泡麵食品",
+  "title": "🥬植物五辛素🥬 韓國 🇰🇷 黑炸醬馬鈴薯泡麵 韓式炸醬麵 五辛素 Vegan炸醬麵 素食泡麵  蔬菜馬鈴薯泡麵 韓國泡麵",
+  "price": 85,
+  "store": "🇹🇼韓國人幫你買🇹🇼",
+  "sales": "65",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1053965147/57357346371",
+  "buyUrl": "https://s.shopee.tw/1BWLeI1IB"
+ },
+ {
+  "id": "52758021977",
+  "category": "泡麵食品",
+  "title": "【現貨🚚新品話題🔥】一度讚 泡麵 牛肉麵 香菜牛肉麵｜牛肉泡麵 香菜泡麵｜速食麵 宵夜必備 台式泡麵",
+  "price": 89,
+  "store": "果日良食 Natural",
+  "sales": "29",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/3244730/52758021977",
+  "buyUrl": "https://s.shopee.tw/1BNTjnDZvQ"
+ },
+ {
+  "id": "5907649694",
+  "category": "泡麵食品",
+  "title": "健康本味 韓國 不倒翁辛辣拉麵120g 泡麵 不倒翁 不倒翁拉麵 不倒翁泡麵 韓國拉麵 韓國泡麵 韓式泡麵",
+  "price": 50,
+  "store": "健康本味 - 辦公室團購零食、堅果、蔬果脆片、蒟蒻乾、韓國泡麵、柚子茶",
+  "sales": "429",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2608227/5907649694",
+  "buyUrl": "https://s.shopee.tw/1143XUEDGP"
+ },
+ {
+  "id": "25346939503",
+  "category": "泡麵食品",
+  "title": "味丹 味味A排骨雞湯麵 味味 素食湯麵 /冬菜鴨肉湯粉絲冬粉 湯麵 碗裝泡麵 即食泡麵 全素泡麵 宵夜 泡麵 速食麵",
+  "price": 30,
+  "store": "J-Lisa零食.餅乾.飲料(滿$150出貨）",
+  "sales": "33",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2394726/25346939503",
+  "buyUrl": "https://s.shopee.tw/qkdLBEqbO"
+ },
+ {
+  "id": "24583041366",
+  "category": "泡麵食品",
+  "title": "印尼泡麵  INDOMIE Goreng 營多麵 印尼炒泡麵 印尼炒泡麵  炒泡麵 乾麵Instant Noodle",
+  "price": 12,
+  "store": "六六雜貨店（越南、印尼、泰國、馬來西亞）",
+  "sales": "257",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/29144040/24583041366",
+  "buyUrl": "https://s.shopee.tw/gRD8sFTwN"
+ },
+ {
+  "id": "21357731713",
+  "category": "泡麵食品",
+  "title": "【輕食糧飲 台灣製造】24H發貨｜小蘭州蕎麥麵 蕎麥麵 SGS認證 蕎麥泡麵 即食泡麵 非油炸 低脂 速食泡麵 快煮麵",
+  "price": 245,
+  "store": "✿艾瑪挖寶去✿",
+  "sales": "2萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/31836112/21357731713",
+  "buyUrl": "https://s.shopee.tw/9fM1rPhDg8"
+ },
+ {
+  "id": "50616636139",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】熱浪島-熱浪叻沙湯麵 泡麵 素食泡麵 麵條 南洋風味 全素 即食麵 速食麵 異國泡麵",
+  "price": 269,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "112",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/50616636139",
+  "buyUrl": "https://s.shopee.tw/9pfS3igaLB"
+ },
+ {
+  "id": "43978479958",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】日本 日清 元祖雞汁麵 425g 小雞麵 雞汁拉麵 雞汁泡麵 泡麵 即食泡麵 點心 零食",
+  "price": 195,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "492",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/43978479958",
+  "buyUrl": "https://s.shopee.tw/9KjBSniUM6"
+ },
+ {
+  "id": "26067300110",
+  "category": "泡麵食品",
+  "title": "【限時特賣】台灣 24H 蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 代餐",
+  "price": 238,
+  "store": "精緻女人第一鋪",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1351574958/26067300110",
+  "buyUrl": "https://s.shopee.tw/9V2bf6hr19"
+ },
+ {
+  "id": "51553575030",
+  "category": "泡麵食品",
+  "title": "輕食糧飲】小蘭州蕎麥麵 台灣製造 免煮快煮麵 蕎麥泡麵 即食泡麵 速食泡麵 低脂黑蕎麥 非油炸 低GI SGS認證 健康",
+  "price": 245,
+  "store": "✿艾瑪挖寶去✿",
+  "sales": "500",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/31836112/51553575030",
+  "buyUrl": "https://s.shopee.tw/AKbiedegKK"
+ },
+ {
+  "id": "56403275817",
+  "category": "泡麵食品",
+  "title": "OMACHI泡麵 越南泡麵 牛肉風味速食麵 排骨風味速食麵 酸辣蝦風味速食麵 義大利風味速食麵 越南碗麵 泡麵 速食麵",
+  "price": 20,
+  "store": "CAO 東南亞食品",
+  "sales": "445",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/804268277/56403275817",
+  "buyUrl": "https://s.shopee.tw/AUv8qwe2zN"
+ },
+ {
+  "id": "46755840539",
+  "category": "泡麵食品",
+  "title": "🔴饞小貝🔘隔日達◆0糖0脂蕎麥麵 糖尿人蕎麥泡麵 健身控糖代餐泡麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣",
+  "price": 16,
+  "store": "『省心購』饞小貝精選零食",
+  "sales": "373",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/272413860/46755840539",
+  "buyUrl": "https://s.shopee.tw/9zysG1fx0I"
+ },
+ {
+  "id": "40952381224",
+  "category": "泡麵食品",
+  "title": "SEDAAP 喜達泡麵 印尼泡麵 撈麵 即食泡麵 沖泡食用 雞肉咖喱麵 辣牛肋麵 青檸湯麵 巴東麵 KFD33",
+  "price": 10,
+  "store": "力力口口店",
+  "sales": "497",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/619324197/40952381224",
+  "buyUrl": "https://s.shopee.tw/AAIISKfJfL"
+ },
+ {
+  "id": "20288124760",
+  "category": "泡麵食品",
+  "title": "印尼泡麵  INDOMIE Goreng 印尼炒泡麵 印尼炒麵 營多麵 炒泡麵 Instant Noodle",
+  "price": 13,
+  "store": "CAO 東南亞食品",
+  "sales": "3,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/804268277/20288124760",
+  "buyUrl": "https://s.shopee.tw/8KqeGxmIO0"
+ },
+ {
+  "id": "22978207330",
+  "category": "泡麵食品",
+  "title": "[L.S.] (現+預) 韓國 Paldo 八道  辣泡菜泡麵 極地麻辣泡麵  蒜香辣牛肉湯麵 韓國泡麵 韓國拉麵",
+  "price": 239,
+  "store": "玖玖工作室",
+  "sales": "681",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/34982363/22978207330",
+  "buyUrl": "https://s.shopee.tw/8VA4TGlf33"
+ },
+ {
+  "id": "41633161556",
+  "category": "泡麵食品",
+  "title": "🥬素心源🥬大瑪肥汁滋麵 全素泡麵 馬來西亞泡麵 南洋風味 椰奶辣味 Q彈拌麵 即食泡麵 快煮麵 宵夜 團購美食 麻奶麵",
+  "price": 99,
+  "store": "🥬素心源｜素食食品批發・植物肉・冷凍素食・泡麵・堅果",
+  "sales": "323",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/16178809/41633161556",
+  "buyUrl": "https://s.shopee.tw/80DnsLnZ3y"
+ },
+ {
+  "id": "46818865611",
+  "category": "泡麵食品",
+  "title": "農心辛拉麵137g/包/辣白醬風味/韓式粉紅醬/韓國泡麵/泡麵/白菜泡麵",
+  "price": 45,
+  "store": "Han 嚴選商店",
+  "sales": "22",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/388994485/46818865611",
+  "buyUrl": "https://s.shopee.tw/8AXE4emvj1"
+ },
+ {
+  "id": "24420447707",
+  "category": "泡麵食品",
+  "title": "「整箱澎湃拜！」🎈美人腿湯麵(12碗/箱)【埔里農會】茭白筍泡麵 素食/牛肉/肉燥 筊白筍泡麵 泡麵 美人腿",
+  "price": 480,
+  "store": "馬鈴薯小鎮(開發票、可刷卡)公司貨",
+  "sales": "763",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/136625406/24420447707",
+  "buyUrl": "https://s.shopee.tw/906L4Bjl2C"
+ },
+ {
+  "id": "40565350048",
+  "category": "泡麵食品",
+  "title": "蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 代餐",
+  "price": 22,
+  "store": "【食刻趣享】零食鋪",
+  "sales": "620",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/738161966/40565350048",
+  "buyUrl": "https://s.shopee.tw/9APlGUj7hF"
+ },
+ {
+  "id": "54958206512",
+  "category": "泡麵食品",
+  "title": "~省錢叔叔二館~上友 貓下去 松露風味炒泡麵 鹹蛋黃風味炒泡麵 乾麵 即食麵 台北知名餐酒店貓下去聯名泡麵 二倍鹹蛋黃",
+  "price": 55,
+  "store": "bebe732107",
+  "sales": "424",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/84740728/54958206512",
+  "buyUrl": "https://s.shopee.tw/8fTUfZl1iA"
+ },
+ {
+  "id": "47308222237",
+  "category": "泡麵食品",
+  "title": "~省錢一哥~上友 貓下去 松露風味炒泡麵 鹹蛋黃風味炒泡麵 乾麵 即食麵 台北知名餐酒店貓下去聯名泡麵 二倍鹹蛋黃",
+  "price": 55,
+  "store": "《省錢ㄧ哥》能省則省",
+  "sales": "202",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/522732434/47308222237",
+  "buyUrl": "https://s.shopee.tw/8pmurskOND"
+ },
+ {
+  "id": "44155454160",
+  "category": "泡麵食品",
+  "title": "蜂釀🍯 【台式炒泡麵】味丹🇹🇼 味味A 炒泡麵 香辣炸醬 爆香三杯 黑胡椒鐵板豬 新品上市 食尚玩家 宵夜 炒泡麵",
+  "price": 33,
+  "store": "蜂釀HoneyBrewed",
+  "sales": "879",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/896618/44155454160",
+  "buyUrl": "https://s.shopee.tw/70LGgVrN5s"
+ },
+ {
+  "id": "6049824272",
+  "category": "泡麵食品",
+  "title": "韓國 八道 Paldo 高麗麵 泡菜麵 牛骨湯麵 海鮮麵 5入袋裝【台灣現貨】泡麵 韓國泡麵 快速出貨 韓寶泡麵",
+  "price": 29,
+  "store": "零食圈 國際美食伴手禮",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/302221940/6049824272",
+  "buyUrl": "https://s.shopee.tw/7Aegsoqjkv"
+ },
+ {
+  "id": "25187783415",
+  "category": "泡麵食品",
+  "title": "來一客 泡麵 辛辣香菇風味 杯麵 沖泡麵 來一客杯麵 統一 統一泡麵 辛香菇風味杯麵",
+  "price": 35,
+  "store": "🦅小小代購者 🐿️店小二雜貨鋪🌟☄️💰💎🌈🌪️⚡🔥",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/5824105/25187783415",
+  "buyUrl": "https://s.shopee.tw/6fiQHtsdlq"
+ },
+ {
+  "id": "29717665727",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪小麵箱購超值組12入｜南洋泡麵系列  重慶 低卡 椒麻 沖泡麵 方便麵 快煮麵 泡麵 素食",
+  "price": 990,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "133",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/29717665727",
+  "buyUrl": "https://s.shopee.tw/6q1qUCs0Qt"
+ },
+ {
+  "id": "51858202269",
+  "category": "泡麵食品",
+  "title": "~省錢叔叔~上友 貓下去 松露風味炒泡麵 鹹蛋黃風味炒泡麵 乾麵 即食麵 台北知名餐酒店貓下去聯名泡麵 二倍鹹蛋黃",
+  "price": 58,
+  "store": "~省錢叔叔真正有夠省~零售、批發",
+  "sales": "556",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/732909376/51858202269",
+  "buyUrl": "https://s.shopee.tw/7faxTjopk4"
+ },
+ {
+  "id": "29751890636",
+  "category": "泡麵食品",
+  "title": "泰國 MAMA 酸辣蝦味麵60g杯裝 泡麵 杯麵 速食麵 泰國泡麵 酸辣泡麵 MAMA麵 【好物底家】DS009623",
+  "price": 45,
+  "store": "📢好物底家旗艦館",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/206062122/29751890636",
+  "buyUrl": "https://s.shopee.tw/7puNg2oCP7"
+ },
+ {
+  "id": "46565082171",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪肥汁滋麵 124g｜多入組｜南洋泡麵系列  椰奶香 濃郁 南洋風味 沖泡麵 快煮麵 素食 泡麵",
+  "price": 327,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "75",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/46565082171",
+  "buyUrl": "https://s.shopee.tw/7Ky757q6Q2"
+ },
+ {
+  "id": "43813702595",
+  "category": "泡麵食品",
+  "title": "🔥蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 拌麵",
+  "price": 6,
+  "store": "丸子小鋪  土豆粉 流汁寬粉 巴西莓粉  拌麵零售批發",
+  "sales": "292",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/72091168/43813702595",
+  "buyUrl": "https://s.shopee.tw/7VHXHQpT55"
+ },
+ {
+  "id": "29801887985",
+  "category": "泡麵食品",
+  "title": "韓國 農心 辛香菇味 杯麵 (68g) 進口 泡麵 團購 農心泡麵 露營 宵夜 韓國泡麵 【好物底家】 D270606",
+  "price": 42,
+  "store": "📢好物底家旗艦館",
+  "sales": "178",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/206062122/29801887985",
+  "buyUrl": "https://s.shopee.tw/5fpt63wRnk"
+ },
+ {
+  "id": "48065975067",
+  "category": "泡麵食品",
+  "title": "海帶蛤蜊湯麵 ｜韓國泡麵 韓式泡麵 海帶蛤蠣湯麵 海鮮拉麵 韓國拉麵 泡麵 韓國八道 Paldo GOMTANG",
+  "price": 159,
+  "store": "小奈零食舖",
+  "sales": "13",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1059569748/48065975067",
+  "buyUrl": "https://s.shopee.tw/5q9JIMvoSn"
+ },
+ {
+  "id": "10855616",
+  "category": "泡麵食品",
+  "title": "健康本味 韓國農心安城湯麵125g 泡麵 原味/海鮮 安城湯麵 農心 安城 韓國泡麵 泡麵",
+  "price": 38,
+  "store": "健康本味 - 辦公室團購零食、堅果、蔬果脆片、蒟蒻乾、韓國泡麵、柚子茶",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2608227/10855616",
+  "buyUrl": "https://s.shopee.tw/5LD2hRxiTi"
+ },
+ {
+  "id": "19534867802",
+  "category": "泡麵食品",
+  "title": "泰國 MAMA 泡麵 泰國泡麵 泰式泡麵 酸辣麵 雞肉綠咖哩 蝦味麵 特級酸辣麵 鴨肉麵 肉碎味麵 55g/包",
+  "price": 20,
+  "store": "CAO 東南亞食品",
+  "sales": "4,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/804268277/19534867802",
+  "buyUrl": "https://s.shopee.tw/5VWStkx58l"
+ },
+ {
+  "id": "5644694134",
+  "category": "泡麵食品",
+  "title": "韓國 農心 香辣 海鮮烏龍麵 (5入超值包) 包裝隨機出貨 烏龍麵 泡麵 農心泡麵 韓國泡麵 【小三美日】D045464",
+  "price": 193,
+  "store": "小三美日",
+  "sales": "121",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11527054/5644694134",
+  "buyUrl": "https://s.shopee.tw/6L5ZtHtuRw"
+ },
+ {
+  "id": "28783952277",
+  "category": "泡麵食品",
+  "title": "👑琪琪小鋪 蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 代餐",
+  "price": 270,
+  "store": "琪琪-零食小鋪",
+  "sales": "100",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1067703331/28783952277",
+  "buyUrl": "https://s.shopee.tw/6VP05atH6z"
+ },
+ {
+  "id": "50150918979",
+  "category": "泡麵食品",
+  "title": "【24H發貨 台灣現貨】湯麵 快煮麵 卽食泡麵 蕎麥泡麵 多口味 麻油口味 黃金泡菜醬 泰式酸辣 湯底 泡麵",
+  "price": 22,
+  "store": "台瑞格（美食&日用品）",
+  "sales": "340",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1114215524/50150918979",
+  "buyUrl": "https://s.shopee.tw/60SjUfvB7u"
+ },
+ {
+  "id": "50551511558",
+  "category": "泡麵食品",
+  "title": "【台灣現貨 24H出貨】湯麵 卽食泡麵 蕎麥泡麵 多口味 快煮麵 麻油口味 黃金泡菜醬 泰式酸辣 湯底泡麵",
+  "price": 22,
+  "store": "多多優選店",
+  "sales": "61",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1049348309/50551511558",
+  "buyUrl": "https://s.shopee.tw/6Am9gyuXmx"
+ },
+ {
+  "id": "51317515730",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪肥汁滋麵 124g｜南洋泡麵系列 椰奶香 濃郁 南洋風味 沖泡麵 快煮麵 素食 泡麵 馬來西亞",
+  "price": 109,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "6",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/51317515730",
+  "buyUrl": "https://s.shopee.tw/4LKVVc1WVc"
+ },
+ {
+  "id": "40113395391",
+  "category": "泡麵食品",
+  "title": "程校長香菜麵 香菜泡麵 沖泡即食 免煮速食 清真方便麵 乾拌麵 碗裝泡麵 大陸泡麵 綠色蔬菜麵 方便速食",
+  "price": 52,
+  "store": "菲菲小鋪 &各類粉麵 調料批發",
+  "sales": "211",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/186409419/40113395391",
+  "buyUrl": "https://s.shopee.tw/4Vdvhv0tAf"
+ },
+ {
+  "id": "43375813189",
+  "category": "泡麵食品",
+  "title": "💕台灣熱賣💕香菜泡面 混裝 宿舍懶人速食 桶裝速食麵 麵條 速食麵 香菜泡麵 泡麵",
+  "price": 53,
+  "store": "b08fy0kwxd",
+  "sales": "6",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1056924709/43375813189",
+  "buyUrl": "https://s.shopee.tw/40hf702nBa"
+ },
+ {
+  "id": "21640520738",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 御膳堂-酒香蒙古鍋牛肉麵 (3包/袋) 袋麵 台灣泡麵 泡麵 PTT 鄉民推薦 臺酒 拉麵",
+  "price": 245,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "151",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/21640520738",
+  "buyUrl": "https://s.shopee.tw/4B15JJ29qd"
+ },
+ {
+  "id": "19662733659",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 麻辣酒香豚肉 (3包/袋) 袋麵 台灣泡麵 泡麵 湯麵 麻辣豚 PTT Dcard 鄉民推薦",
+  "price": 158,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "53",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/19662733659",
+  "buyUrl": "https://s.shopee.tw/50aCIpyz9o"
+ },
+ {
+  "id": "48557366257",
+  "category": "泡麵食品",
+  "title": "🥬植物五辛素🥬 韓國 🇰🇷 原味蔬菜泡麵 素食拉麵 蔬菜拉麵 素食泡麵 韓國素食泡麵 原味 蔬菜 Sahmyook",
+  "price": 85,
+  "store": "🇹🇼韓國人幫你買🇹🇼",
+  "sales": "12",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1053965147/48557366257",
+  "buyUrl": "https://s.shopee.tw/5AtcV8yLor"
+ },
+ {
+  "id": "51265118866",
+  "category": "泡麵食品",
+  "title": "【隔日配現貨💥】韓國不倒翁泡麵 金拉麵 原味 辛辣 熱辣 韓國泡麵 快煮麵 異國零食 宵夜點心 銅板美食 團購 泡麵",
+  "price": 29,
+  "store": "角落格子選物",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/295015/51265118866",
+  "buyUrl": "https://s.shopee.tw/4fxLuE0Fpm"
+ },
+ {
+  "id": "44482104889",
+  "category": "泡麵食品",
+  "title": "✨台灣現貨📦韓國不倒翁起司拉麵111g×4包 超濃起司泡麵 韓國泡麵 起司拉麵 韓式泡麵 速食麵 宵夜 #彤夫人生活",
+  "price": 150,
+  "store": "彤夫人生活",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/314245972/44482104889",
+  "buyUrl": "https://s.shopee.tw/4qGm6WzcUp"
+ },
+ {
+  "id": "57302550521",
+  "category": "泡麵食品",
+  "title": "【台灣 熱銷】 小楊甄選 乾拌麵 即期泡麵 即期泡麵 100g速食 方便麵 麻辣味/蔥油味/火雞風味碗裝泡麵 沖泡即食",
+  "price": 565,
+  "store": "饞嘴調味鋪",
+  "sales": "11",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/130633387/57302550521",
+  "buyUrl": "https://s.shopee.tw/30p7vA6bDU"
+ },
+ {
+  "id": "51568828604",
+  "category": "泡麵食品",
+  "title": "日本購入🇯🇵現貨秒出❤️冷水泡麵｜冷泡麵｜辣味泡菜｜日清｜冰水泡麵｜杯麵｜海鹽檸檬",
+  "price": 160,
+  "store": "今天想買什麼💗SeeYou👀",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/4528092/51568828604",
+  "buyUrl": "https://s.shopee.tw/3B8Y7T5xsX"
+ },
+ {
+  "id": "25145889972",
+  "category": "泡麵食品",
+  "title": "🚛蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 代餐",
+  "price": 15,
+  "store": "小綠葉零食小賣場",
+  "sales": "250",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/4254187/25145889972",
+  "buyUrl": "https://s.shopee.tw/2gCHWY7rtS"
+ },
+ {
+  "id": "29327289241",
+  "category": "泡麵食品",
+  "title": "日本羅森 LAWSON 日本超商 超商系列 日本泡麵 超商泡麵 日本泡麵",
+  "price": 100,
+  "store": "京昇日本代購🇯🇵",
+  "sales": "87",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/9444837/29327289241",
+  "buyUrl": "https://s.shopee.tw/2qVhir7EYV"
+ },
+ {
+  "id": "10564605921",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 三杯雞風味乾麵 (5包/袋) 袋麵 台灣泡麵 泡麵 乾麵 PTT Dcard 鄉民推薦 臺酒",
+  "price": 119,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "221",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/10564605921",
+  "buyUrl": "https://s.shopee.tw/3g4oiO43rg"
+ },
+ {
+  "id": "10064232948",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 花雕雞麵 (3包/袋) 袋麵 台灣泡麵 泡麵 湯麵 花雕雞 PTT Dcard 鄉民推薦 臺酒",
+  "price": 158,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "59",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/10064232948",
+  "buyUrl": "https://s.shopee.tw/3qOEuh3QWj"
+ },
+ {
+  "id": "49760275539",
+  "category": "泡麵食品",
+  "title": "［so媽］✨台灣現貨📦韓國不倒翁起司拉麵 111g×4包 超濃起司泡麵 韓國泡麵 起司拉麵 韓式泡麵 速食麵 宵夜",
+  "price": 153,
+  "store": "so媽的雜貨天地",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1678537/49760275539",
+  "buyUrl": "https://s.shopee.tw/3LRyJm5KXe"
+ },
+ {
+  "id": "29534242387",
+  "category": "泡麵食品",
+  "title": "👑琪琪小鋪  蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 代餐",
+  "price": 4,
+  "store": "琪琪-零食小鋪",
+  "sales": "3,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1067703331/29534242387",
+  "buyUrl": "https://s.shopee.tw/3VlOW54hCh"
+ },
+ {
+  "id": "49669327449",
+  "category": "泡麵食品",
+  "title": "好市多代購 維力 香菜牛肉風味麵 110公克 X 12入  泡麵 牛肉泡麵 香菜牛肉泡麵",
+  "price": 439,
+  "store": "微笑好物嚴選",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11331889/49669327449",
+  "buyUrl": "https://s.shopee.tw/1gJkKiBfvM"
+ },
+ {
+  "id": "46019309396",
+  "category": "泡麵食品",
+  "title": "好市多代購 維力 香菜牛肉風味麵 110公克 泡麵 牛肉泡麵 香菜牛肉泡麵",
+  "price": 39,
+  "store": "微笑好物嚴選",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11331889/46019309396",
+  "buyUrl": "https://s.shopee.tw/1qdAX1B2aP"
+ },
+ {
+  "id": "40173037450",
+  "category": "泡麵食品",
+  "title": "香菜泡面 混裝 宿舍懶人速食 桶裝速食麵 麵條 速食麵 泡麵 香菜泡麵",
+  "price": 55,
+  "store": "魔法兜兜屋",
+  "sales": "31",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/303446429/40173037450",
+  "buyUrl": "https://s.shopee.tw/1Lgtw6CwbK"
+ },
+ {
+  "id": "57910246456",
+  "category": "泡麵食品",
+  "title": "✨台灣現貨📦韓國不倒翁起司拉麵111g×4包 超濃起司泡麵 韓國泡麵 起司拉麵 韓式泡麵 速食麵 宵夜 #VK",
+  "price": 153,
+  "store": "VK生活用品及二手攝影器材零售",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/955576/57910246456",
+  "buyUrl": "https://s.shopee.tw/1W0K8PCJGN"
+ },
+ {
+  "id": "44034330580",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪肥汁滋麵 124g｜箱入組｜南洋泡麵系列 椰奶香 濃郁 南洋風味 沖泡麵 快煮麵 素食 泡麵",
+  "price": 622,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "2",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/44034330580",
+  "buyUrl": "https://s.shopee.tw/2LZR7w98ZY"
+ },
+ {
+  "id": "46161667222",
+  "category": "泡麵食品",
+  "title": "免運🔥親民超市🔥同碗福香菜面110g/袋 速食泡麵 方便泡麵 懶人方便麵 宵夜拌麵 袋裝速食 免煮宿舍泡麵",
+  "price": 1000,
+  "store": "熊熊屋（安全食品）",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1348848702/46161667222",
+  "buyUrl": "https://s.shopee.tw/2VsrKF8VEb"
+ },
+ {
+  "id": "40530810834",
+  "category": "泡麵食品",
+  "title": "蘭蘭日本✨✨台灣現貨📦韓國不倒翁起司拉麵111g×4包 超濃起司泡麵 韓國泡麵 起司拉麵 韓式泡麵 速食麵 宵夜",
+  "price": 150,
+  "store": "蘭蘭日本小舖～日貨專賣店🇯🇵",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/109895580/40530810834",
+  "buyUrl": "https://s.shopee.tw/20wajKAPFW"
+ },
+ {
+  "id": "26590135112",
+  "category": "泡麵食品",
+  "title": "台灣出貨👉蕎麥麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 團購 批發 休閑食品",
+  "price": 31,
+  "store": "好食多HSD進口食品優選",
+  "sales": "267",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/36143677/26590135112",
+  "buyUrl": "https://s.shopee.tw/2BG0vd9luZ"
+ },
+ {
+  "id": "51813379487",
+  "category": "泡麵食品",
+  "title": "【台灣現貨 快速出貨】蕎麥麵 蕎麥泡麵 快煮麵 免煮麵速食麵 即食泡麵 低脂麵無糖無鹽黑麥蕎麥麵減醣 低卡泡麵 代餐",
+  "price": 24,
+  "store": "酱茶食味 醬料、茶包、速食麵、零食、進口巧克力 批發可聊",
+  "sales": "16",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/748039264/51813379487",
+  "buyUrl": "https://s.shopee.tw/LoMkGGkdE"
+ },
+ {
+  "id": "28912735923",
+  "category": "泡麵食品",
+  "title": "日本 Acecook 日式泡麵 博多豚骨風味 札幌味噌風味 仙台辛味噌 鹽味雞湯 【阿瓜歐妮】杯麵 袋裝泡麵 逸品泡麵",
+  "price": 30,
+  "store": "阿瓜歐妮  ago_onni",
+  "sales": "107",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/272853110/28912735923",
+  "buyUrl": "https://s.shopee.tw/W7mwZG7IH"
+ },
+ {
+  "id": "28534346066",
+  "category": "泡麵食品",
+  "title": "泰國 養養 三款風味泡麵 泰式炒麵/椰汁雞湯/酸辣蝦【阿瓜歐妮】泰國泡麵 東南亞泡麵 泰國必買",
+  "price": 35,
+  "store": "阿瓜歐妮  ago_onni",
+  "sales": "36",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/272853110/28534346066",
+  "buyUrl": "https://s.shopee.tw/1BWLeI1JC"
+ },
+ {
+  "id": "48356589384",
+  "category": "泡麵食品",
+  "title": "【壹家零食】程校長香菜麵 香菜方便麵 香菜泡麵 碗裝泡麵 沖泡即食 免煮速食 清真泡麵 懶人食品 酸湯麵葉 土豆泥拌麵",
+  "price": 58,
+  "store": "悠亞好物嚴選❤️",
+  "sales": "0",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/72810341/48356589384",
+  "buyUrl": "https://s.shopee.tw/BUwXxHNyF"
+ },
+ {
+  "id": "47356589504",
+  "category": "泡麵食品",
+  "title": "【壹家零食】宛禾麻醬米線125g 免煮速食 沖泡即食 過橋米線 麻辣米線 大陸泡麵 碗裝泡麵 香菜泡麵 宿舍食品",
+  "price": 58,
+  "store": "悠亞好物嚴選❤️",
+  "sales": "13",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/72810341/47356589504",
+  "buyUrl": "https://s.shopee.tw/1143XUEDHQ"
+ },
+ {
+  "id": "13637404568",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 紹興香蔥拌麵 (4包/袋) 袋麵 台灣泡麵 泡麵 快煮麵 PTT Dcard 鄉民推薦 臺酒",
+  "price": 253,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "146",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/13637404568",
+  "buyUrl": "https://s.shopee.tw/1BNTjnDZwT"
+ },
+ {
+  "id": "11764247085",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 花雕酸菜牛肉麵 (3包/袋) 袋麵 台灣泡麵 泡麵 湯麵 酸菜牛 PTT Dcard 鄉民推薦",
+  "price": 158,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "24",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/11764247085",
+  "buyUrl": "https://s.shopee.tw/gRD8sFTxO"
+ },
+ {
+  "id": "47060811078",
+  "category": "泡麵食品",
+  "title": "✨台灣現貨📦韓國不倒翁起司拉麵111g×4包 超濃起司泡麵 韓國泡麵 起司拉麵 韓式泡麵 速食麵 宵夜 #丹丹悅生活",
+  "price": 149,
+  "store": "丹丹悅生活",
+  "sales": "4",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/38337427/47060811078",
+  "buyUrl": "https://s.shopee.tw/qkdLBEqcR"
+ },
+ {
+  "id": "57014269054",
+  "category": "泡麵食品",
+  "title": "輕食糧飲 蕎麥麵/配調料包 蕎麥麵 蒟蒻麵 可泡可煮 蕎麥泡麵 即食泡麵 非油炸 低脂 速食泡麵 快煮麵",
+  "price": 237,
+  "store": "丸子小鋪  土豆粉 流汁寬粉 巴西莓粉  拌麵零售批發",
+  "sales": "1",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/72091168/57014269054",
+  "buyUrl": "https://s.shopee.tw/9V2bf6hr28"
+ },
+ {
+  "id": "43373023924",
+  "category": "泡麵食品",
+  "title": "台灣熱賣 泡麵  香菜泡面 香菜泡麵 混裝 宿舍懶人速食 桶裝速食麵 麵條 速食麵",
+  "price": 52,
+  "store": "味哆哆饞嘴屋",
+  "sales": "8",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/140061918/43373023924",
+  "buyUrl": "https://s.shopee.tw/9KjBSniUN7"
+ },
+ {
+  "id": "56857351277",
+  "category": "泡麵食品",
+  "title": "🥬植物五辛素🥬 韓國 🇰🇷 蔬菜泡麵 蔬菜拉麵 素食泡麵 素食拉麵 五辛素 韓國泡麵 農心 拉麵 韓國 純素 素食",
+  "price": 85,
+  "store": "🇹🇼韓國人幫你買🇹🇼",
+  "sales": "21",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1053965147/56857351277",
+  "buyUrl": "https://s.shopee.tw/9pfS3igaME"
+ },
+ {
+  "id": "44125318901",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】TTL台酒泡麵碗麵全系列 花雕雞/酸菜牛/麻油雞/川辣水煮牛/紅酒牛肉 泡麵 宵夜",
+  "price": 55,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "10萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/44125318901",
+  "buyUrl": "https://s.shopee.tw/9fM1rPhDhD"
+ },
+ {
+  "id": "26900543157",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】日清 Nissin 合味道杯麵 泡麵 海鮮/香辣海鮮/咖哩海鮮/XO醬/酸辣蝦 泡麵",
+  "price": 38,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "10萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/26900543157",
+  "buyUrl": "https://s.shopee.tw/AAIISKfJgK"
+ },
+ {
+  "id": "23359170685",
+  "category": "泡麵食品",
+  "title": "台灣製造 台灣現貨 蕎麥麵 蕎麥拉麵 低脂 升級透明裝 快煮麵 速食泡麵 非油炸 即食泡麵 原味80克/袋 24H出貨",
+  "price": 32,
+  "store": "多多優選店",
+  "sales": "10萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1049348309/23359170685",
+  "buyUrl": "https://s.shopee.tw/9zysG1fx1J"
+ },
+ {
+  "id": "10964230698",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 紅標米酒麻油雞麵 (3包/袋) 袋麵 台灣泡麵 泡麵 湯麵 麻油雞 PTT Dcard 鄉民推薦",
+  "price": 158,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "28",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/10964230698",
+  "buyUrl": "https://s.shopee.tw/AUv8qwe30Q"
+ },
+ {
+  "id": "10764609966",
+  "category": "泡麵食品",
+  "title": "【牛牛小舖】台酒泡麵 鹽麴芝麻拌麵 (4包/袋) 全素 袋麵 台灣泡麵 泡麵 快煮麵 PTT Dcard 鄉民推薦 臺酒",
+  "price": 253,
+  "store": "牛牛小舖 NiuNiu",
+  "sales": "61",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/531966266/10764609966",
+  "buyUrl": "https://s.shopee.tw/AKbiedegLP"
+ },
+ {
+  "id": "23084651313",
+  "category": "泡麵食品",
+  "title": "蕎麥麵 台灣製造 蕎麥拉麵 SGS認證 快免煮麵 卽食泡麵 蕎麥泡麵 低脂麵蕎麥麵 多口味可選 快速出貨 台瑞格美食",
+  "price": 32,
+  "store": "多多優選店",
+  "sales": "10萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1049348309/23084651313",
+  "buyUrl": "https://s.shopee.tw/8AXE4emvk0"
+ },
+ {
+  "id": "56803565799",
+  "category": "泡麵食品",
+  "title": "【輕食糧飲】小蘭州蕎麥麵 台灣製造 20入家庭量販 黑蕎麥 低脂蕎麥麵 蕎麥泡麵 即食泡麵 快煮麵 非油炸 低GI SG",
+  "price": 245,
+  "store": "✿艾瑪挖寶去✿",
+  "sales": "9,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/31836112/56803565799",
+  "buyUrl": "https://s.shopee.tw/80DnsLnZ4z"
+ },
+ {
+  "id": "26132633122",
+  "category": "泡麵食品",
+  "title": "【虎留香】酸辣粉｜道地川味 136g 1份/碗｜酸湯粉 酸辣泡麵 碗裝泡麵 沖泡即食 官方旗艦店",
+  "price": 69,
+  "store": "虎留香直營商城",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1190646813/26132633122",
+  "buyUrl": "https://s.shopee.tw/8VA4TGlf46"
+ },
+ {
+  "id": "25155311534",
+  "category": "泡麵食品",
+  "title": "24H出貨 台灣現貨 蕎麥麵 蕎麥拉麵 快免煮麵 卽食泡麵 蕎麥泡麵 低脂麵蕎麥麵 蔥油 椒麻拌麵 拌麵",
+  "price": 32,
+  "store": "台瑞格（美食&日用品）",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1114215524/25155311534",
+  "buyUrl": "https://s.shopee.tw/8KqeGxmIP5"
+ },
+ {
+  "id": "29801452773",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國 農心 泡麵 辛拉麵/爽口海鮮烏龍/安城/馬鈴薯麵/頂級辛拉麵 單包 韓國泡麵 拉麵 麵條",
+  "price": 41,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "8萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/29801452773",
+  "buyUrl": "https://s.shopee.tw/8pmurskOOC"
+ },
+ {
+  "id": "24732417902",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國 農心 泡麵 道地韓國味大碗麵系列 多種口味選擇 韓國泡麵 即食麵 碗麵",
+  "price": 58,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/24732417902",
+  "buyUrl": "https://s.shopee.tw/8fTUfZl1jB"
+ },
+ {
+  "id": "27652411927",
+  "category": "泡麵食品",
+  "title": "台灣現貨 24H發貨 蕎麥麵 免煮麵 卽食泡麵 蕎麥泡麵 低脂麵蕎麥麵 蔥油拌麵 蕎麥拌麵 湯底 湯麵",
+  "price": 32,
+  "store": "多多優選店",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1049348309/27652411927",
+  "buyUrl": "https://s.shopee.tw/9APlGUj7iI"
+ },
+ {
+  "id": "24194841901",
+  "category": "泡麵食品",
+  "title": "【最新有效期】蕎麥方便麵 蕎麥麵 免煮麵條 0低脂 麵 低脂 泡麵低脂蕎麥麵 快煮麵 速食麵 卽食泡麵 蕎麥麵 H2NO",
+  "price": 5,
+  "store": "休閒零食屋",
+  "sales": "4,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1211109306/24194841901",
+  "buyUrl": "https://s.shopee.tw/906L4Bjl3H"
+ },
+ {
+  "id": "23464931032",
+  "category": "泡麵食品",
+  "title": "蜂釀🍯 【限量‼️袋裝】辛拉麵🔥農心 內銷版 台灣版 安城 韓國 泡麵 韓版 原裝進口 拉麵 泡麵 境內版 全系列",
+  "price": 125,
+  "store": "蜂釀HoneyBrewed",
+  "sales": "7萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/896618/23464931032",
+  "buyUrl": "https://s.shopee.tw/6q1qUCs0Rs"
+ },
+ {
+  "id": "40677933865",
+  "category": "泡麵食品",
+  "title": "台酒 杯常幸福 杯麵 60g 泡麵 酸菜魚 花雕雞 宵夜 露營 台酒泡麵 湯麵【小三美日】空運禁送 DS028921",
+  "price": 48,
+  "store": "小三美日",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11527054/40677933865",
+  "buyUrl": "https://s.shopee.tw/6fiQHtsdmr"
+ },
+ {
+  "id": "55160432192",
+  "category": "泡麵食品",
+  "title": "台灣現貨 蕎麥麵 台灣製造 蕎麥拉麵 SGS認證 快免煮麵 卽食泡麵 蕎麥泡麵 低脂麵蕎麥麵 多口味可選",
+  "price": 32,
+  "store": "Tairg好味館",
+  "sales": "433",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1695836691/55160432192",
+  "buyUrl": "https://s.shopee.tw/7Aegsoqjly"
+ },
+ {
+  "id": "16873269754",
+  "category": "泡麵食品",
+  "title": "泰國MAMA麵 印尼營多泡麵 泡麵 速食麵 媽媽麵 營多麵 鹹蛋黃麵 酸辣蝦麵  泰式酸辣麵 綠咖哩 鴨肉麵 乾麵 湯麵",
+  "price": 15,
+  "store": "泰國風~團購批發網",
+  "sales": "5萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/326691/16873269754",
+  "buyUrl": "https://s.shopee.tw/70LGgVrN6x"
+ },
+ {
+  "id": "28004434207",
+  "category": "泡麵食品",
+  "title": "「現貨免運」泰國🇹🇭 日清泰式酸辣蝦麵 泰國日清泡麵 東陰功奶濃湯泡麵 泰冷 帶組1",
+  "price": 33,
+  "store": "小老闆小老板還魂梅",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/3092272/28004434207",
+  "buyUrl": "https://s.shopee.tw/7VHXHQpT64"
+ },
+ {
+  "id": "48356095961",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國不倒翁 風味拉麵 (金螃蟹/海鮮烏龍/泡菜/辛辣/起司/辣起司) OTTOGI 不倒翁 泡麵 韓國泡麵",
+  "price": 256,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/48356095961",
+  "buyUrl": "https://s.shopee.tw/7Ky757q6R3"
+ },
+ {
+  "id": "26900228847",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國KORMOSA 韓素香全素泡麵 (芹菜香菇湯麵/紅燒湯麵)(4包/袋) 素食可食韓國泡麵",
+  "price": 117,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "6,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/26900228847",
+  "buyUrl": "https://s.shopee.tw/7puNg2oCQA"
+ },
+ {
+  "id": "28418062227",
+  "category": "泡麵食品",
+  "title": "【限時優惠】蕎麥麵 非油炸全素蕎麥粗糧麵 低脂無糖 免煮麵速食麵 素食代餐泡麵 低卡泡麵 代餐",
+  "price": 297,
+  "store": "優選進口零食鋪子",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/149185750/28418062227",
+  "buyUrl": "https://s.shopee.tw/7faxTjopl9"
+ },
+ {
+  "id": "45207728293",
+  "category": "泡麵食品",
+  "title": "農心辛拉麵120g/包/韓國/泡麵/辛拉麵/單包裝/海鮮味烏龍麵/安城湯麵/韓國泡麵",
+  "price": 27,
+  "store": "麥麥購物中心",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/6665831/45207728293",
+  "buyUrl": "https://s.shopee.tw/5VWStkx59k"
+ },
+ {
+  "id": "49857714872",
+  "category": "泡麵食品",
+  "title": "韓國農心辛拉麵120g/包/韓國/泡麵/辛拉麵/單包裝/韓國泡麵/海鮮味烏龍麵",
+  "price": 28,
+  "store": "SuperBuy五金百貨生活館",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/808304640/49857714872",
+  "buyUrl": "https://s.shopee.tw/5LD2hRxiUj"
+ },
+ {
+  "id": "25295239692",
+  "category": "泡麵食品",
+  "title": "~省錢叔叔~韓國 農心 安城湯麵 辛香葀 辣白菜 爽口海鮮烏龍 袋麵 包麵 即食泡麵 湯麵 袋裝泡麵 120g~125g",
+  "price": 28,
+  "store": "~省錢叔叔真正有夠省~零售、批發",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/732909376/25295239692",
+  "buyUrl": "https://s.shopee.tw/40hf77yK5x"
+ },
+ {
+  "id": "43300921732",
+  "category": "泡麵食品",
+  "title": "蕎麥方便麵 蕎麥麵 免煮麵條 0低脂 麵 低脂 泡麵低脂蕎麥麵 快煮麵 速食麵 即食泡麵 蕎麥面",
+  "price": 5,
+  "store": "菲菲小鋪 &各類粉麵 調料批發",
+  "sales": "6,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/186409419/43300921732",
+  "buyUrl": "https://s.shopee.tw/4Vdvi2wQ54"
+ },
+ {
+  "id": "28580495370",
+  "category": "泡麵食品",
+  "title": "蜂釀🍯 【味味A 大碗麵 Plus】味丹🇹🇼 味味A Plus 黑蒜豚骨 紅燒牛肉 排骨雞乾麵 炒泡麵 碗麵 宵夜 泡麵",
+  "price": 35,
+  "store": "蜂釀HoneyBrewed",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/896618/28580495370",
+  "buyUrl": "https://s.shopee.tw/4LKVVjx3Q3"
+ },
+ {
+  "id": "28702417038",
+  "category": "泡麵食品",
+  "title": "【台灣現貨 24H發貨】蕎麥麵 快煮麵 卽食泡麵 蕎麥泡麵 低脂麵蕎麥麵 蔥油拌麵 蕎麥拌麵 批發團購",
+  "price": 32,
+  "store": "台瑞格（美食&日用品）",
+  "sales": "7,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1114215524/28702417038",
+  "buyUrl": "https://s.shopee.tw/4qGm6ev9PA"
+ },
+ {
+  "id": "26600228633",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國 農心 爽口海鮮味烏龍麵 120g/包 4入裝 韓國泡麵 烏龍麵 泡麵",
+  "price": 149,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/26600228633",
+  "buyUrl": "https://s.shopee.tw/4fxLuLvmk9"
+ },
+ {
+  "id": "50106083068",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】台酒TTL 花雕雞酒粕乾麵 酒香炸醬風味 拌麵 乾拌麵 即食麵 泡麵 泡麵乾麵 麵條 麵食 酒香麵",
+  "price": 220,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "6,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/50106083068",
+  "buyUrl": "https://s.shopee.tw/5AtcVGtsjG"
+ },
+ {
+  "id": "28687155580",
+  "category": "泡麵食品",
+  "title": "蔬PER麵【台酒×善善心】蔬PER杯麵 素食泡麵 蔬食泡麵 杯麵 無肉無奶蛋 台酒 聯名",
+  "price": 176,
+  "store": "善善心 shine shine seed,",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1187695830/28687155580",
+  "buyUrl": "https://s.shopee.tw/50aCIxuW4F"
+ },
+ {
+  "id": "26932645385",
+  "category": "泡麵食品",
+  "title": "【虎留香】酸辣粉｜道地川味 136g 6入組｜超值12入箱裝｜酸湯粉 酸辣泡麵 碗裝泡麵 沖泡即食 官方旗艦店",
+  "price": 414,
+  "store": "虎留香直營商城",
+  "sales": "4,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1190646813/26932645385",
+  "buyUrl": "https://s.shopee.tw/2qVhiz2lSq"
+ },
+ {
+  "id": "26189766258",
+  "category": "泡麵食品",
+  "title": "【虎留香】經典嘗鮮組合包｜螺螄粉3入+酸辣粉3入+酸菜魚粉3入｜螺獅粉 螺螄麵 台製米粉 酸湯粉 酸辣泡麵 碗裝泡麵",
+  "price": 795,
+  "store": "虎留香直營商城",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1190646813/26189766258",
+  "buyUrl": "https://s.shopee.tw/2gCHWg3Onp"
+ },
+ {
+  "id": "45604054598",
+  "category": "泡麵食品",
+  "title": "『厚呷◆隔日達』0脂蕎麥麵 低糖蕎麥速食麵 72g帶料包 糖友可食蕎麥拉麵 健身代餐快煮麵 速食泡麵 非油炸 即食泡麵",
+  "price": 17,
+  "store": "『省心購』厚呷 零食匯",
+  "sales": "806",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/55499505/45604054598",
+  "buyUrl": "https://s.shopee.tw/3B8Y7b1Umw"
+ },
+ {
+  "id": "41051267243",
+  "category": "泡麵食品",
+  "title": "~省錢一哥~韓國 農心 安城湯麵 辛香葀 辣白菜 爽口海鮮烏龍 袋麵 包麵 即食泡麵 湯麵 袋裝泡麵 120g~125g",
+  "price": 28,
+  "store": "《省錢ㄧ哥》能省則省",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/522732434/41051267243",
+  "buyUrl": "https://s.shopee.tw/30p7vI287v"
+ },
+ {
+  "id": "40552964070",
+  "category": "泡麵食品",
+  "title": "蔬PER杯麵【台酒×善善心】蔬PER麵 素食泡麵 蔬食泡麵 杯麵 無奶蛋 微醺豆腐 羅勒森林 台酒 聯名",
+  "price": 176,
+  "store": "善善心 shine shine seed,",
+  "sales": "724",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1187695830/40552964070",
+  "buyUrl": "https://s.shopee.tw/3VlOWD0E72"
+ },
+ {
+  "id": "54760428890",
+  "category": "泡麵食品",
+  "title": "台灣現貨 隔日到貨 蕎麥麵 台灣製造 蕎麥拉麵 SGS認證 快免煮麵 卽食泡麵 蕎麥泡麵 低脂麵蕎麥麵 多口味可選",
+  "price": 32,
+  "store": "繽鮮購物_美食伴手禮",
+  "sales": "528",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1050169338/54760428890",
+  "buyUrl": "https://s.shopee.tw/3LRyJu0rS1"
+ },
+ {
+  "id": "27558601464",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國 農心 安城湯麵 4入裝 原味/海鮮味 韓國泡麵 泡麵 麵",
+  "price": 158,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "3,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/27558601464",
+  "buyUrl": "https://s.shopee.tw/3qOEuoyxR8"
+ },
+ {
+  "id": "43109374075",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國 農心 辛炒麵 130g/包 泰式酸辣味 泡麵 快煮麵 辛拉麵 炒泡麵",
+  "price": 56,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "940",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/43109374075",
+  "buyUrl": "https://s.shopee.tw/3g4oiVzam7"
+ },
+ {
+  "id": "49117293502",
+  "category": "泡麵食品",
+  "title": "日本 Tabete 拉麵 日本拉麵 豚骨拉麵 泡麵 柚子鹽拉麵 扇貝高湯麵 柚子泡麵 醬油拉麵 鹽味拉麵 雞白湯拉麵",
+  "price": 89,
+  "store": "巧梨吃貨！生活小物‧團購美食",
+  "sales": "149",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/9159071/49117293502",
+  "buyUrl": "https://s.shopee.tw/6fiQI1oAgi"
+ },
+ {
+  "id": "50208519953",
+  "category": "泡麵食品",
+  "title": "🔴省心購🔸隔日到貨🔸0脂蕎麥麵低糖蕎麥速食麵 72g帶料包糖友可食蕎麥拉麵干脆面健身代餐快煮麵 速食泡麵非油炸即食泡面",
+  "price": 17,
+  "store": "「SX省心購」吃得開心 零食工坊",
+  "sales": "376",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/14475897/50208519953",
+  "buyUrl": "https://s.shopee.tw/6q1qUKnXLl"
+ },
+ {
+  "id": "28677271248",
+  "category": "泡麵食品",
+  "title": "🇹🇭泰國現貨秒出‼️泰國泡麵泰國媽媽麵มาม่าคัพ ควิกคัพ泰國必買泡麵",
+  "price": 49,
+  "store": "泰美亞商行｜泰國好物直送",
+  "sales": "713",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/66876440/28677271248",
+  "buyUrl": "https://s.shopee.tw/70LGgdmu0o"
+ },
+ {
+  "id": "41133026753",
+  "category": "泡麵食品",
+  "title": "【隔日到貨】大瑪 肥汁滋麵 124g 全素 南洋風味泡麵 椰香 椒香 南洋椰奶 酸辣鮮香 泡麵 湯麵【愛淘購物】",
+  "price": 99,
+  "store": "愛淘購物 店到店隔日到貨",
+  "sales": "183",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/346150196/41133026753",
+  "buyUrl": "https://s.shopee.tw/7AegswmGfr"
+ },
+ {
+  "id": "58005551869",
+  "category": "泡麵食品",
+  "title": "【日系報馬仔】台酒 杯常幸福 杯麵 60g 泡麵 酸菜魚 花雕雞 海味 宵夜 露營 台酒泡麵 湯麵 DS028921",
+  "price": 43,
+  "store": "日系報馬仔｜日系商品專賣",
+  "sales": "411",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1146766752/58005551869",
+  "buyUrl": "https://s.shopee.tw/7Ky75FldKu"
+ },
+ {
+  "id": "42467261783",
+  "category": "泡麵食品",
+  "title": "【素食可食】猴菇山藥面 速食泡麵 方便麵 主食免煮 泡麵非油炸 粗糧面 掛麵",
+  "price": 5,
+  "store": "素康飲食%優選",
+  "sales": "699",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1205492815/42467261783",
+  "buyUrl": "https://s.shopee.tw/7VHXHYkzzx"
+ },
+ {
+  "id": "10847039",
+  "category": "泡麵食品",
+  "title": "健康本味 韓國不倒翁Q拉麵110g 不倒翁 不倒翁泡麵 韓國拉麵 泡麵 拉麵",
+  "price": 17,
+  "store": "健康本味 - 辦公室團購零食、堅果、蔬果脆片、蒟蒻乾、韓國泡麵、柚子茶",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2608227/10847039",
+  "buyUrl": "https://s.shopee.tw/7faxTrkMf0"
+ },
+ {
+  "id": "54160703866",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國不倒翁 風味炒麵 (起司/辣起司) OTTOGI 不倒翁 泡麵 炒麵 韓國泡麵",
+  "price": 173,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "775",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/54160703866",
+  "buyUrl": "https://s.shopee.tw/7puNgAjjK3"
+ },
+ {
+  "id": "48751666381",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】圃美多 花蟹蛤蠣牛骨風味湯麵398g/紅蟹風味炒碼麵412g/花蟹海鮮風味拉麵406g 4入 泡麵 韓國泡麵",
+  "price": 168,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/48751666381",
+  "buyUrl": "https://s.shopee.tw/5LD2hZtFOa"
+ },
+ {
+  "id": "17392601172",
+  "category": "泡麵食品",
+  "title": "越南河粉 CUNG DINH 宮廷泡麵 越南泡麵 河粉 粉條 海鮮河粉 牛肉河粉 雞肉河粉  海鮮粿條",
+  "price": 30,
+  "store": "CAO 東南亞食品",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/804268277/17392601172",
+  "buyUrl": "https://s.shopee.tw/5VWStssc3d"
+ },
+ {
+  "id": "50861569089",
+  "category": "泡麵食品",
+  "title": "『聚優◆隔日達』0脂蕎麥麵 低糖蕎麥速食麵 72g帶料包 糖友可食蕎麥拉麵 健身代餐快煮麵 速食泡麵 非油炸 即食泡麵",
+  "price": 16,
+  "store": "『省心購』聚優◆品質精選",
+  "sales": "214",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/3111671/50861569089",
+  "buyUrl": "https://s.shopee.tw/5fpt6Bryig"
+ },
+ {
+  "id": "6390345552",
+  "category": "泡麵食品",
+  "title": "凍乾 【乾燥蔬菜隨身包】乾燥蔬菜 蔬菜乾 脫水蔬菜 泡麵蔬菜包 一碗加一包 讓泡麵好吃到頂天啦",
+  "price": 9,
+  "store": "藍北貨行-脫水蔬菜專賣",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/242158353/6390345552",
+  "buyUrl": "https://s.shopee.tw/5q9JIUrLNj"
+ },
+ {
+  "id": "54815210843",
+  "category": "泡麵食品",
+  "title": "【老鍋米粉】快速沖泡米粉杯杯(60g/杯 鮮蝦 肉燥 蔥香 小卷 新竹米粉、純米米粉、沖泡麵、杯麵、泡麵、即食調理)",
+  "price": 48,
+  "store": "良品開飯｜KFAN",
+  "sales": "114",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/39357849/54815210843",
+  "buyUrl": "https://s.shopee.tw/60SjUnqi2m"
+ },
+ {
+  "id": "21157091544",
+  "category": "泡麵食品",
+  "title": "泰國 MAMA 酸辣蝦味麵60g／綠咖哩風味麵60g(杯裝) 泡麵 杯麵 速食麵 泰國泡麵【小三美日】DS009623x",
+  "price": 42,
+  "store": "小三美日",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11527054/21157091544",
+  "buyUrl": "https://s.shopee.tw/6Am9h6q4hp"
+ },
+ {
+  "id": "25831744714",
+  "category": "泡麵食品",
+  "title": "韓國 農心 辛拉麵 ／ 韓式粉紅醬款(5入超值包) 韓式泡麵 拉麵 辣泡麵 Rose炒麵【好物底家】 D041688 x",
+  "price": 169,
+  "store": "📢好物底家旗艦館",
+  "sales": "623",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/206062122/25831744714",
+  "buyUrl": "https://s.shopee.tw/6L5ZtPpRMs"
+ },
+ {
+  "id": "6481163486",
+  "category": "泡麵食品",
+  "title": "來一客 杯麵系列 3入 泡麵【小麥購物】24H出貨 韓式泡菜 鮮蝦魚板 方便麵 湯麵 宵夜 點心 即泡麵【A327】",
+  "price": 69,
+  "store": "小麥購物",
+  "sales": "1萬+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/9687994/6481163486",
+  "buyUrl": "https://s.shopee.tw/6VP05ioo1v"
+ },
+ {
+  "id": "28900223659",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】韓國 農心 泡麵 道地韓國味碗麵 辣牛肉湯味/泡菜味/浣熊炸醬烏龍 韓國泡麵 湯麵 即食麵 烏龍麵 宵夜",
+  "price": 65,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "5,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/28900223659",
+  "buyUrl": "https://s.shopee.tw/9KjBSve1HU"
+ },
+ {
+  "id": "28400223817",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】農心 部隊鍋拉麵 127g/包 4入裝 韓國泡麵 泡麵 拉麵 農心拉麵",
+  "price": 224,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "568",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/28400223817",
+  "buyUrl": "https://s.shopee.tw/9V2bfEdNwX"
+ },
+ {
+  "id": "47513309039",
+  "category": "泡麵食品",
+  "title": "品綺 重慶酸辣粉 60g 酸辣粉絲 泡麵 方便麵 杯裝 沖泡 宵夜 追劇 麻辣泡麵 酸辣香濃【三哥嚴選】DS030977",
+  "price": 49,
+  "store": "三哥嚴選｜現貨 平日天天出貨",
+  "sales": "32",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1145945387/47513309039",
+  "buyUrl": "https://s.shopee.tw/9fM1rXckba"
+ },
+ {
+  "id": "20822704859",
+  "category": "泡麵食品",
+  "title": "越南好好泡麵 MI HAO HAO 越南即食泡麵 好好酸辣 紅蔥沙嗲 香菇雞肉 蝦蔥味炒麵 MI GORENG",
+  "price": 15,
+  "store": "CAO 東南亞食品",
+  "sales": "4,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/804268277/20822704859",
+  "buyUrl": "https://s.shopee.tw/9pfS3qc7Gd"
+ },
+ {
+  "id": "44903047924",
+  "category": "泡麵食品",
+  "title": "《MAMA》最齊全口味在這🇹🇭泰國 MAMA麵 米粉 粿條｜蝦味麵 綠咖哩 肉碎麵 泰國泡麵 特級酸辣蝦 媽媽麵 泡麵",
+  "price": 16,
+  "store": "泰美亞商行｜泰國好物直送",
+  "sales": "451",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/66876440/44903047924",
+  "buyUrl": "https://s.shopee.tw/9zysG9bTvg"
+ },
+ {
+  "id": "97067366",
+  "category": "泡麵食品",
+  "title": "韓國 農心 辣味炒碼麵 130g*4包(整袋裝) 泡麵 團購 韓國泡麵 韓國炒麵 宵夜 美食【小三美日】D033787",
+  "price": 250,
+  "store": "小三美日",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11527054/97067366",
+  "buyUrl": "https://s.shopee.tw/AAIISSaqaj"
+ },
+ {
+  "id": "53153559759",
+  "category": "泡麵食品",
+  "title": "【輕食糧飲】小蘭州蕎麥麵 台灣製造 黑蕎麥 低脂蕎麥麵 蕎麥泡麵 即食泡麵 快煮麵 非油炸 低GI SGS認證",
+  "price": 245,
+  "store": "✿艾瑪挖寶去✿",
+  "sales": "446",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/31836112/53153559759",
+  "buyUrl": "https://s.shopee.tw/AKbielaDFm"
+ },
+ {
+  "id": "47113342352",
+  "category": "泡麵食品",
+  "title": "精選✨程校長酸湯麵葉 味美湯鮮 免煮速食 香菜麵 沖泡即食麵片 開胃酸湯泡麵 碗裝泡麵 杯麵 過橋米線 即食宵夜 麻",
+  "price": 65,
+  "store": "精選好吃零食倉",
+  "sales": "32",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/895878580/47113342352",
+  "buyUrl": "https://s.shopee.tw/AUv8r4ZZup"
+ },
+ {
+  "id": "48306797078",
+  "category": "泡麵食品",
+  "title": "【輕食糧飲 台灣製造】小蘭州蕎麥麵 純麵組 黑蕎麥麵 非油炸 低GI 蕎麥泡麵 即食泡麵 快煮麵",
+  "price": 245,
+  "store": "✿艾瑪挖寶去✿",
+  "sales": "103",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/31836112/48306797078",
+  "buyUrl": "https://s.shopee.tw/80DnsTj5zM"
+ },
+ {
+  "id": "48615760063",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】大瑪小麵 素食辣拌麵 沖泡 即食 泡麵 乾麵 麵食 快煮麵 方便麵 全素 素食泡麵 乾拌麵 素食拌麵 麻辣",
+  "price": 129,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "118",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/48615760063",
+  "buyUrl": "https://s.shopee.tw/8AXE4miSeP"
+ },
+ {
+  "id": "29819424417",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】三養火辣雞 火辣雞肉風味湯麵/元祖拉麵 5包入 韓國泡麵 辣雞麵 辣雞湯麵 即食泡麵",
+  "price": 245,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "709",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/29819424417",
+  "buyUrl": "https://s.shopee.tw/8KqeH5hpJS"
+ },
+ {
+  "id": "29367606204",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】四川重慶雙享組合｜大瑪酸辣粉x6入+大瑪重慶小麵x6入｜素食 低卡 方便麵 泡麵 異國 沖泡麵",
+  "price": 890,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/29367606204",
+  "buyUrl": "https://s.shopee.tw/8VA4TOhByV"
+ },
+ {
+  "id": "55905004914",
+  "category": "泡麵食品",
+  "title": "【台酒】現貨速出🔥花雕雞乾麵 花雕雞拌麵 花雕雞麵 台酒泡麵 台酒乾麵 酒香拌麵 乾拌麵 即食麵 拌麵 花雕雞泡麵",
+  "price": 180,
+  "store": "可愛不打烊🎀百貨",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/30124640/55905004914",
+  "buyUrl": "https://s.shopee.tw/8fTUfhgYdY"
+ },
+ {
+  "id": "49216847030",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】肥汁滋麵(124g/碗)全素 南洋泡麵 椰奶 濃郁 南洋風味 快煮麵 素食 泡麵 椰奶湯底 肥汁 肥滋",
+  "price": 99,
+  "store": "得福Derfood",
+  "sales": "26",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/15100407/49216847030",
+  "buyUrl": "https://s.shopee.tw/8pmus0fvIb"
+ },
+ {
+  "id": "22245913136",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪小麵（133g/碗）(全素可食)純素 泡麵 小辣 冬粉 泡麵 純素 Vegan 蔬食 無動物性成分",
+  "price": 85,
+  "store": "得福Derfood",
+  "sales": "993",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/15100407/22245913136",
+  "buyUrl": "https://s.shopee.tw/906L4JfHxe"
+ },
+ {
+  "id": "47366533892",
+  "category": "泡麵食品",
+  "title": "🔥蕎麥麵 🔥低脂麵 無糖無鹽黑麥蕎麥麵 減醣 日式蕎麥麵 蕎麥泡麵  免煮麵速食麵 即食泡麵 代餐麺 🔥速食麵🔥",
+  "price": 13,
+  "store": "👑一鳴驚人零食鋪",
+  "sales": "23",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/190190124/47366533892",
+  "buyUrl": "https://s.shopee.tw/9APlGceech"
+ },
+ {
+  "id": "24572146759",
+  "category": "泡麵食品",
+  "title": "🔥24H出貨🔥三養火雞面 杯裝 三養 桶裝泡麵 超辣變態辣 奶油 泡麵 免煮速食 沖泡即食 辣雞杯麵 乾拌麵  韓式拌麵",
+  "price": 89,
+  "store": "DDK零食鋪（零食批發）",
+  "sales": "698",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/5733481/24572146759",
+  "buyUrl": "https://s.shopee.tw/1LgtwE8TWC"
+ },
+ {
+  "id": "9567543",
+  "category": "泡麵食品",
+  "title": "健康本味 韓國農心浣熊麵/爽口烏龍麵120g[KO46150020] 泡麵 烏龍麵 農心 韓國泡麵",
+  "price": 36,
+  "store": "健康本味 - 辦公室團購零食、堅果、蔬果脆片、蒟蒻乾、韓國泡麵、柚子茶",
+  "sales": "2,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2608227/9567543",
+  "buyUrl": "https://s.shopee.tw/1W0K8X7qBF"
+ },
+ {
+  "id": "51660348316",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】泰國 MaMa 麵 泡麵 蝦味/酸辣/肉碎/青咖哩/排骨/火鍋/鴨肉 30入/箱 箱購 泰國泡麵",
+  "price": 475,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "84",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/51660348316",
+  "buyUrl": "https://s.shopee.tw/1gJkKq7CqI"
+ },
+ {
+  "id": "45012426299",
+  "category": "泡麵食品",
+  "title": "【蝦皮直營】味王 王子杯麵系列(鮮鮮海味/濃濃牛肉/蔥蔥肉燥) 12入/箱 箱購 泡麵 即食麵 麵食 沖泡麵",
+  "price": 380,
+  "store": "蝦皮直營 _ 生活超市 - 最快當日到",
+  "sales": "96",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/50662979/45012426299",
+  "buyUrl": "https://s.shopee.tw/1qdAX96ZVL"
+ },
+ {
+  "id": "54513511063",
+  "category": "泡麵食品",
+  "title": "蜂釀🍯 【味丹新品✨】味味A 炒泡麵 黑胡椒鐵板豬 早安美之城 聯名監製 炒麵 鐵板麵 鐵板炒麵 早餐 泡麵 宵夜",
+  "price": 35,
+  "store": "蜂釀HoneyBrewed",
+  "sales": "110",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/896618/54513511063",
+  "buyUrl": "https://s.shopee.tw/20wajS5wAO"
+ },
+ {
+  "id": "3313256629",
+  "category": "泡麵食品",
+  "title": "泰國mama鹹蛋黃泡麵salted egg和冬陰功泡麵",
+  "price": 39,
+  "store": "william01127",
+  "sales": "3,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/12779910/3313256629",
+  "buyUrl": "https://s.shopee.tw/2BG0vl5IpR"
+ },
+ {
+  "id": "40679332538",
+  "category": "泡麵食品",
+  "title": "🥬植物五辛素🥬 韓國 🇰🇷 素食馬鈴薯泡麵 馬鈴薯素食拉麵 炸醬拉麵 韓國泡麵 韓國拉麵 素食拉麵 五辛素 純素 素食",
+  "price": 90,
+  "store": "🇹🇼韓國人幫你買🇹🇼",
+  "sales": "97",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1053965147/40679332538",
+  "buyUrl": "https://s.shopee.tw/2LZR844fUU"
+ },
+ {
+  "id": "24733024927",
+  "category": "泡麵食品",
+  "title": "泰國MAMA泡麵 泰國泡麵  泰式 酸辣麵 雞肉綠咖哩 蝦味麵 特級酸辣麵 鴨肉麵 肉碎味麵 55g/包",
+  "price": 12,
+  "store": "六六雜貨店（越南、印尼、泰國、馬來西亞）",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/29144040/24733024927",
+  "buyUrl": "https://s.shopee.tw/2VsrKN429X"
+ },
+ {
+  "id": "29752961290",
+  "category": "泡麵食品",
+  "title": "🥬全素🥬不含五辛🥬 韓國 🇰🇷 素食大麥泡麵 素食拉麵 嚼勁拉麵 韓國泡麵 韓國拉麵 素食拉麵 不含五辛素 韓國大麥",
+  "price": 85,
+  "store": "🇹🇼韓國人幫你買🇹🇼",
+  "sales": "266",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1053965147/29752961290",
+  "buyUrl": "https://s.shopee.tw/1BWLmDYE4"
+ },
+ {
+  "id": "43360699698",
+  "category": "泡麵食品",
+  "title": "台灣出貨💗合味芳土豆泥泥拌麵 土豆泥拌麵 過橋米線 乾拌麵 沖泡即食 免煮速食 碗裝泡麵 大陸泡麵 宿舍美食",
+  "price": 56,
+  "store": "好食多HSD進口食品優選",
+  "sales": "327",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/36143677/43360699698",
+  "buyUrl": "https://s.shopee.tw/BUwY5Cut7"
+ },
+ {
+  "id": "53164915738",
+  "category": "泡麵食品",
+  "title": "【隔日到貨】大瑪 肥汁滋麵 124g 全素 南洋風味泡麵 椰香 椒香 南洋椰奶 酸辣鮮香 泡麵 湯麵【青荷草沐】",
+  "price": 99,
+  "store": "青荷草沐 蝦店隔日到達",
+  "sales": "48",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/792024438/53164915738",
+  "buyUrl": "https://s.shopee.tw/LoMkOCHYA"
+ },
+ {
+  "id": "40908660503",
+  "category": "泡麵食品",
+  "title": "韓國 農心 辛拉麵 辣白醬風味 大碗麵 113g 韓國泡麵 宵夜 露營 即食 泡麵 麵 美食【小三美日】DS026682",
+  "price": 79,
+  "store": "小三美日",
+  "sales": "210",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11527054/40908660503",
+  "buyUrl": "https://s.shopee.tw/W7mwhBeDD"
+ },
+ {
+  "id": "40678506442",
+  "category": "泡麵食品",
+  "title": "🔥熱銷推薦🔥小楊哥優選 白象火雞麵 五入裝 韓式泡麵 奶油火雞麵 拌麵 速食麵 泡麵 零食 方便麵 宵夜",
+  "price": 246,
+  "store": "DDK零食鋪（零食批發）",
+  "sales": "116",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/5733481/40678506442",
+  "buyUrl": "https://s.shopee.tw/gRD90B0sG"
+ },
+ {
+  "id": "26810018190",
+  "category": "泡麵食品",
+  "title": "Indomie 營多麵 印尼炒麵 印尼泡麵 撈麵 即食泡麵 沖泡食用 辣牛肋麵 青檸湯麵 巴東麵 KFD01-1",
+  "price": 8,
+  "store": "力力口口店",
+  "sales": "144",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/619324197/26810018190",
+  "buyUrl": "https://s.shopee.tw/qkdLJANXJ"
+ },
+ {
+  "id": "57164109664",
+  "category": "泡麵食品",
+  "title": "wowoo襪嗚 ▸《開發票》 現貨🇯🇵日本 7-11 海帶蛤蜊泡麵 塩拉麵 日本泡麵 65g",
+  "price": 140,
+  "store": "wowoo襪嗚|生活居家百貨",
+  "sales": "36",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/391169765/57164109664",
+  "buyUrl": "https://s.shopee.tw/1143Xc9kCM"
+ },
+ {
+  "id": "41157427782",
+  "category": "泡麵食品",
+  "title": "0脂麵 代餐 即食速食代餐方便麵 網紅蕎麥麵 蕎麥拉麵 免煮麵 卽食泡麵 蕎麥泡麵",
+  "price": 28,
+  "store": "【零嘴樂園】",
+  "sales": "293",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/103487785/41157427782",
+  "buyUrl": "https://s.shopee.tw/1BNTjv96rP"
+ },
+ {
+  "id": "48561157185",
+  "category": "泡麵食品",
+  "title": "【現貨🚚麻辣燙泡麵🔥】味丹味味麵｜麻辣燙風味 青蔥自由、芋見喔ㄚ・香菜自由風味｜味味麵 味丹 香菜自由  麻辣燙泡麵",
+  "price": 59,
+  "store": "果日良食 Natural",
+  "sales": "61",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/3244730/48561157185",
+  "buyUrl": "https://s.shopee.tw/40hf77yK6y"
+ },
+ {
+  "id": "52518910979",
+  "category": "泡麵食品",
+  "title": "#悠西將# 日本 藤原製麵 拉麵 山頭火 日式拉麵 日本泡麵 泡麵 火山頭",
+  "price": 79,
+  "store": "悠西將 日貨舖",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2293056/52518910979",
+  "buyUrl": "https://s.shopee.tw/4B15JQxgm1"
+ },
+ {
+  "id": "55609208124",
+  "category": "泡麵食品",
+  "title": "蘑菇屋【網紅泡麵】鮮蟹黃 拌麵非油炸盒裝 拉麵 速食泡麵 方便麵食 懶人宵夜  正宗蟹黃拌麵 蘇式細面【此商品不含肉類】",
+  "price": 22,
+  "store": "蘑菇屋【解饞休閒零食 彩妝 護膚品 生活用品】",
+  "sales": "12",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/5782344/55609208124",
+  "buyUrl": "https://s.shopee.tw/4LKVVjx3R4"
+ },
+ {
+  "id": "49618914837",
+  "category": "泡麵食品",
+  "title": "*貪吃熊* 日本 藤原製麵 拉麵 山頭火 日式拉麵 日本泡麵 泡麵 火山頭",
+  "price": 79,
+  "store": "🐻貪吃熊小店舖🐻",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/8636781/49618914837",
+  "buyUrl": "https://s.shopee.tw/4Vdvi2wQ67"
+ },
+ {
+  "id": "26119554374",
+  "category": "泡麵食品",
+  "title": "~省錢叔叔~馬來西亞 許式企業 A1肉骨茶 肉骨茶袋麵 泡麵 肉骨茶泡麵 CNN評價一生必吃美食 一袋四包 隨貨附發票",
+  "price": 99,
+  "store": "~省錢叔叔真正有夠省~零售、批發",
+  "sales": "334",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/732909376/26119554374",
+  "buyUrl": "https://s.shopee.tw/4fxLuLvmlA"
+ },
+ {
+  "id": "51465181040",
+  "category": "泡麵食品",
+  "title": "〔現貨特惠〕大瑪南洋蔬食 肥汁滋麵 124g 椰嶼椒香 南洋風味泡麵 全素 蔬食泡麵 碗麵 單碗販售",
+  "price": 109,
+  "store": "小小星球 ｜即期品｜零食餅乾｜福利品",
+  "sales": "25",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/761983/51465181040",
+  "buyUrl": "https://s.shopee.tw/4qGm6ev9QD"
+ },
+ {
+  "id": "50600776178",
+  "category": "泡麵食品",
+  "title": "【解憂雜貨店鋪】程校長酸湯麵葉 香菜麵 免煮速食 沖泡即食 碗裝泡麵 大陸泡麵 過橋米線 宿舍方便夜宵粉麵 麻醬米線",
+  "price": 52,
+  "store": "-解憂雜貨店鋪-",
+  "sales": "150",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/108019416/50600776178",
+  "buyUrl": "https://s.shopee.tw/50aCIxuW5G"
+ },
+ {
+  "id": "53706575734",
+  "category": "泡麵食品",
+  "title": "【壹家零食】合味芳土豆泥泥拌麵 麻辣土豆泥 土豆泥拌麵 宿舍食品 沖泡即食 免煮速食 碗裝泡麵 過橋米線 香菜泡麵",
+  "price": 58,
+  "store": "悠亞好物嚴選❤️",
+  "sales": "28",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/72810341/53706575734",
+  "buyUrl": "https://s.shopee.tw/5AtcVGtskJ"
+ },
+ {
+  "id": "41952212929",
+  "category": "泡麵食品",
+  "title": "【免煮】蕎麥麵 非油炸全素蕎麥粗糧麵 低脂無糖 野餐方便麵泡麵 低卡代餐麵條 素食代餐泡麵",
+  "price": 79,
+  "store": "貝貝零食優選【輕食零食 代餐 咖啡 日用品等】",
+  "sales": "89",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1402897327/41952212929",
+  "buyUrl": "https://s.shopee.tw/2gCHWg3Ooq"
+ },
+ {
+  "id": "56813313506",
+  "category": "泡麵食品",
+  "title": "【丸小豆】狸貓妃 野菜螺螄泡麵 有蔬菜包超澎派 螺獅粉(小小丸2.0) 網紅 香辣宵夜 Q彈泡麵 獨享美食 懶人料理",
+  "price": 149,
+  "store": "丸小豆零食✨｜原小小丸團隊｜台灣現貨｜即食粉皮.特色麵包.大白兔奶糖.鍋巴.魔芋",
+  "sales": "23",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/706763282/56813313506",
+  "buyUrl": "https://s.shopee.tw/2qVhiz2lTt"
+ },
+ {
+  "id": "55651166284",
+  "category": "泡麵食品",
+  "title": "韓國 百濟米麵線 1入 泡菜 海鮮 蔥香牛肉 麵線 泡麵 露營 宵夜 米線 韓國泡麵 晚餐【好物底家】D081819",
+  "price": 53,
+  "store": "📢好物底家旗艦館",
+  "sales": "137",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/206062122/55651166284",
+  "buyUrl": "https://s.shopee.tw/30p7vI288w"
+ },
+ {
+  "id": "48102981476",
+  "category": "泡麵食品",
+  "title": "【現貨🚚韓國人氣泡麵🔥】蛤蜊青陽辣椒拉麵｜海鮮辣湯・青陽辣椒・韓國拉麵｜香辣湯頭・宵夜必囤・韓國爆紅泡麵",
+  "price": 99,
+  "store": "果日良食 Natural",
+  "sales": "95",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/3244730/48102981476",
+  "buyUrl": "https://s.shopee.tw/3B8Y7b1Unz"
+ },
+ {
+  "id": "42183652035",
+  "category": "泡麵食品",
+  "title": "#悠西將# 台灣 銀川 泡麵 米粉 沖泡純米粉 銀川沖泡純米粉 麻油當歸味 酸菜魚風味 螺獅粉 碗裝泡麵",
+  "price": 70,
+  "store": "悠西將 日貨舖",
+  "sales": "9",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2293056/42183652035",
+  "buyUrl": "https://s.shopee.tw/3LRyJu0rT2"
+ },
+ {
+  "id": "47857884966",
+  "category": "泡麵食品",
+  "title": "🔥農會熱門泡麵區🍜埔里美人腿湯麵｜🌾農好蓬萊麵(米麵)｜🍠大甲芋鄉米粉湯｜🥢燒酎細絲麵🏡農會出品｜🍜泡麵推薦",
+  "price": 169,
+  "store": "馬鈴薯小鎮(開發票、可刷卡)公司貨",
+  "sales": "54",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/136625406/47857884966",
+  "buyUrl": "https://s.shopee.tw/3VlOWD0E85"
+ },
+ {
+  "id": "43108652457",
+  "category": "泡麵食品",
+  "title": "韓國 農心 爽口海鮮味 烏龍杯麵(63g) 烏龍麵 韓國泡麵 方便麵 即食 泡麵 宵夜 露營【小三美日】DS026676",
+  "price": 47,
+  "store": "小三美日",
+  "sales": "301",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/11527054/43108652457",
+  "buyUrl": "https://s.shopee.tw/3g4oiVzan8"
+ },
+ {
+  "id": "45050813891",
+  "category": "泡麵食品",
+  "title": "【口感獨特好】香菜麵 小杯方便麵 免煮速食桶裝泡麵 泡麵 夜宵衝泡",
+  "price": 45,
+  "store": "熊熊屋（安全食品）",
+  "sales": "52",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1348848702/45050813891",
+  "buyUrl": "https://s.shopee.tw/3qOEuoyxSB"
+ },
+ {
+  "id": "52217605384",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪螺螄粉碗裝 234g｜箱入組｜螺獅粉 螺絲粉 泡麵 速食麵 方便麵 廣西 柳州 沖泡麵 素食",
+  "price": 799,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/52217605384",
+  "buyUrl": "https://s.shopee.tw/7AegswmGgq"
+ },
+ {
+  "id": "51653073859",
+  "category": "泡麵食品",
+  "title": "日本🇯🇵東洋水產 正麵 拉麵 日本泡麵碗麵 濃厚味噌 芳醇醬油拉麵 マルちゃん 豚骨 味噌 碗裝泡麵 東京拉麵 日本美食",
+  "price": 150,
+  "store": "J-Lisa零食.餅乾.飲料(滿$150出貨）",
+  "sales": "113",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2394726/51653073859",
+  "buyUrl": "https://s.shopee.tw/70LGgdmu1p"
+ },
+ {
+  "id": "50214910514",
+  "category": "泡麵食品",
+  "title": "【隔日到貨】大瑪 肥汁滋麵 124g 6入箱購 全素 南洋風味泡麵 椰香 椒香 南洋椰奶 酸辣鮮香 泡麵【愛淘購物】",
+  "price": 588,
+  "store": "愛淘購物 店到店隔日到貨",
+  "sales": "29",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/346150196/50214910514",
+  "buyUrl": "https://s.shopee.tw/6q1qUKnXMo"
+ },
+ {
+  "id": "27757231770",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪小麵一箱(6碗)（133g/碗）純素 泡麵 小辣 冬粉 泡麵 純素 Vegan 蔬食 無動物性成分",
+  "price": 510,
+  "store": "得福Derfood",
+  "sales": "185",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/15100407/27757231770",
+  "buyUrl": "https://s.shopee.tw/6fiQI1oAhn"
+ },
+ {
+  "id": "50316809609",
+  "category": "泡麵食品",
+  "title": "*貪吃熊* 日本 東洋 KACHI 系列 泡麵 雞高湯風味杯麵 杯麵 東洋泡麵 萊姆香辣風味",
+  "price": 79,
+  "store": "🐻貪吃熊小店舖🐻",
+  "sales": "6",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/8636781/50316809609",
+  "buyUrl": "https://s.shopee.tw/7puNgAjjL2"
+ },
+ {
+  "id": "40960559780",
+  "category": "泡麵食品",
+  "title": "~省錢叔叔~韓國進口 Nongshim 農心杯麵 安城湯麵 杯裝 杯麵 泡麵 即食泡麵 66g 方便麵 速食麵",
+  "price": 35,
+  "store": "~省錢叔叔真正有夠省~零售、批發",
+  "sales": "356",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/732909376/40960559780",
+  "buyUrl": "https://s.shopee.tw/7faxTrkMg1"
+ },
+ {
+  "id": "54818783722",
+  "category": "泡麵食品",
+  "title": "【滑倒の麵】4入組〔鍋燒意麵 經典鮮蔬〕24小時出貨 台灣製造 SGS認證  伴手禮 快煮麵 可素食 速食泡麵 即食泡麵",
+  "price": 220,
+  "store": "滑倒の麵 goodnoodle",
+  "sales": "4",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/712415934/54818783722",
+  "buyUrl": "https://s.shopee.tw/7VHXHYl010"
+ },
+ {
+  "id": "56318793413",
+  "category": "泡麵食品",
+  "title": "【滑倒の麵】4入組〔鍋燒意麵 養生藥膳〕24小時出貨 台灣製造 SGS認證  伴手禮 快煮麵 可素食 速食泡麵 即食泡麵",
+  "price": 220,
+  "store": "滑倒の麵 goodnoodle",
+  "sales": "4",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/712415934/56318793413",
+  "buyUrl": "https://s.shopee.tw/7Ky75FldLz"
+ },
+ {
+  "id": "26368486658",
+  "category": "泡麵食品",
+  "title": "【限時優惠】蕎麥麵 非油炸全素蕎麥粗糧麵 低脂無糖 免煮麵速食麵 素食代餐泡麵 低卡泡麵 代餐",
+  "price": 298,
+  "store": "優選進口零食鋪子",
+  "sales": "84",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/149185750/26368486658",
+  "buyUrl": "https://s.shopee.tw/5q9JIUrLOi"
+ },
+ {
+  "id": "26942613261",
+  "category": "泡麵食品",
+  "title": "辣白菜拌面 沖泡免煮 非油炸正宗家庭裝 免煮  韓式辣白菜拌面 韓式泡面 碗裝泡麵 拌麵 乾拌面 麻醬米線 拌麵",
+  "price": 89,
+  "store": "🍭愛淘零食🍭",
+  "sales": "4",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/167802466/26942613261",
+  "buyUrl": "https://s.shopee.tw/5fpt6Bryjh"
+ },
+ {
+  "id": "28794338542",
+  "category": "泡麵食品",
+  "title": "【新品】白象 蟹黃拌麵 泡麵 方便麵  蘇式上海 蟹黃拌麵 袋裝【一包有5袋共630g】 泡麵 袋裝 批發 速食",
+  "price": 388,
+  "store": "饞嘴調味鋪",
+  "sales": "66",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/130633387/28794338542",
+  "buyUrl": "https://s.shopee.tw/5VWStssc4g"
+ },
+ {
+  "id": "49309808614",
+  "category": "泡麵食品",
+  "title": "宛禾 砂鍋土豆粉 麻醬米線 麻辣味 即食粉絲泡麵 碗裝泡麵 沖泡即食粉麵 麻醬米線 懶人夜宵沖泡即食",
+  "price": 69,
+  "store": "本宮餓了 各類醬料 調料 零食 粉麵 茶葉 食品批發團購",
+  "sales": "33",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1661990717/49309808614",
+  "buyUrl": "https://s.shopee.tw/5LD2hZtFPf"
+ },
+ {
+  "id": "43832183901",
+  "category": "泡麵食品",
+  "title": "蘑菇屋 超實惠 5 包 白象 蟹黃拌麵 泡麵 方便麵  蘇式上海 袋裝 泡麵 袋裝 網紅 蟹黃麵 方便速食",
+  "price": 72,
+  "store": "蘑菇屋【解饞休閒零食 彩妝 護膚品 生活用品】",
+  "sales": "5",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/5782344/43832183901",
+  "buyUrl": "https://s.shopee.tw/6VP05ioo2u"
+ },
+ {
+  "id": "44283652029",
+  "category": "泡麵食品",
+  "title": "*貪吃熊* 台灣 銀川 泡麵 米粉 沖泡純米粉 銀川沖泡純米粉 麻油當歸味 酸菜魚風味 螺獅粉 碗裝泡麵",
+  "price": 70,
+  "store": "🐻貪吃熊小店舖🐻",
+  "sales": "25",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/8636781/44283652029",
+  "buyUrl": "https://s.shopee.tw/6L5ZtPpRNt"
+ },
+ {
+  "id": "42229391375",
+  "category": "泡麵食品",
+  "title": "白象乾拌麵 麻辣小龍蝦拌麵 白象方便麵 韓式火雞麵 蔥油拌麵 碗裝泡麵 香菜泡麵 蟹黃拌麵 杯麵 沖泡即食",
+  "price": 75,
+  "store": "零食頑家 各類醬料 零食 粉麵 茶葉 食品批發",
+  "sales": "71",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/1182284705/42229391375",
+  "buyUrl": "https://s.shopee.tw/6Am9h6q4is"
+ },
+ {
+  "id": "48918808698",
+  "category": "泡麵食品",
+  "title": "【滑倒の麵】4入組〔鍋燒意麵 田園番茄〕24小時出貨 台灣製造 SGS認證  伴手禮 快煮麵 可素食 速食泡麵 即食泡麵",
+  "price": 220,
+  "store": "滑倒の麵 goodnoodle",
+  "sales": "2",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/712415934/48918808698",
+  "buyUrl": "https://s.shopee.tw/60SjUnqi3r"
+ },
+ {
+  "id": "28345744407",
+  "category": "泡麵食品",
+  "title": "【大瑪南洋蔬食】大瑪螺螄粉碗裝 234g｜螺獅粉 螺絲粉 泡麵 速食麵 方便麵 廣西 柳州 馬來西亞 沖泡麵 素食",
+  "price": 139,
+  "store": "大瑪南洋蔬食官方旗艦店",
+  "sales": "13",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2236325/28345744407",
+  "buyUrl": "https://s.shopee.tw/9pfS3qc7Hc"
+ },
+ {
+  "id": "12890570",
+  "category": "泡麵食品",
+  "title": "健康本味 韓國 不倒翁OTTOGI螃蟹炒碼麵130g 不倒翁 不倒翁泡麵 韓國泡麵 韓國拉麵",
+  "price": 59,
+  "store": "健康本味 - 辦公室團購零食、堅果、蔬果脆片、蒟蒻乾、韓國泡麵、柚子茶",
+  "sales": "503",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2608227/12890570",
+  "buyUrl": "https://s.shopee.tw/9fM1rXckcb"
+ },
+ {
+  "id": "11785723",
+  "category": "泡麵食品",
+  "title": "健康本味 韓國OTTOGI不倒翁海鮮烏龍麵 120g 不倒翁 海鮮 烏龍麵 韓國泡麵 不倒翁泡麵  不倒翁拉麵 海鮮烏龍",
+  "price": 33,
+  "store": "健康本味 - 辦公室團購零食、堅果、蔬果脆片、蒟蒻乾、韓國泡麵、柚子茶",
+  "sales": "1,000+",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/2608227/11785723",
+  "buyUrl": "https://s.shopee.tw/9V2bfEdNxa"
+ },
+ {
+  "id": "26757770209",
+  "category": "泡麵食品",
+  "title": "【金車漢寶】極鮮海味風味麵104g(12碗/箱) 速食碗麵 日式 海鮮泡麵 泡麵 杯麵 碗麵｜官方直營",
+  "price": 420,
+  "store": "金車官方旗艦館",
+  "sales": "72",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/746533222/26757770209",
+  "buyUrl": "https://s.shopee.tw/9KjBSve1IZ"
+ },
+ {
+  "id": "25872005361",
+  "category": "泡麵食品",
+  "title": "蝦幣10%回饋👑【筊白筍泡麵】素食/牛肉湯麵/肉燥湯麵 埔里鎮農會 美人腿湯麵 台灣製 茭白筍  南投名產 泡麵",
+  "price": 480,
+  "store": "新希望小賣場New Hope Shop 開發票 可刷卡 公司貨",
+  "sales": "262",
+  "image": "",
+  "viewUrl": "https://shopee.tw/product/75766781/25872005361",
+  "buyUrl": "https://s.shopee.tw/AUv8r4ZZvo"
+ }
+];
 
-  <footer>
-    <p>商品價格、庫存及優惠以蝦皮商品頁面顯示為準。</p>
-    <p>本網站為商品推薦頁面，點擊「立即查看」將前往蝦皮。</p>
-  </footer>
+  // ====== 狀態 ======
+  const ALL = "全部商品";
+  let current = ALL;
 
-  <script src="products.js"></script>
-  <script src="app.js"></script>
+  const $tabs = document.getElementById("tabs");
+  const $grid = document.getElementById("grid");
+  const $count = document.getElementById("count");
+
+  const fmt = n => "NT$ " + Number(n).toLocaleString("en-US");
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  // 依商品編號去重
+  function dedupe(list) {
+    const seen = new Set();
+    return list.filter(p => !seen.has(p.id) && seen.add(p.id));
+  }
+
+  function renderTabs() {
+    const cats = [ALL, ...new Set(products.map(p => p.category))];
+    $tabs.innerHTML = cats.map(c =>
+      `<button class="tab ${c === current ? "active" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`
+    ).join("");
+  }
+
+  function renderGrid() {
+    const list = dedupe(products).filter(p => current === ALL || p.category === current);
+    $count.textContent = `共 ${list.length} 件商品（已依商品編號去重；不顯示分潤資料）`;
+
+    if (!list.length) { $grid.innerHTML = `<div class="empty">目前沒有商品</div>`; return; }
+
+    $grid.innerHTML = list.map(p => `
+      <article class="card">
+        <div class="thumb">
+          ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title)}" loading="lazy">` : `<span class="ph">${p.category === "美妝保養" ? "🧴" : "🍜"}</span>`}
+        </div>
+        <div class="cat">${esc(p.category)}</div>
+        <h3 class="title">${esc(p.title)}</h3>
+        <div class="price">${fmt(p.price)}</div>
+        <div class="meta">
+          商店：${esc(p.store)} ｜ 銷量：${esc(p.sales)}
+          <div class="sku">商品編號：${esc(p.id)}</div>
+        </div>
+        <div class="actions">
+          <a class="btn ghost" href="${esc(p.viewUrl)}" target="_blank" rel="noopener">查看商品</a>
+          <a class="btn solid" href="${esc(p.buyUrl)}" target="_blank" rel="noopener">前往購買</a>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  $tabs.addEventListener("click", e => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    current = btn.dataset.cat;
+    renderTabs();
+    renderGrid();
+  });
+
+  renderTabs();
+  renderGrid();
+</script>
 </body>
 </html>
