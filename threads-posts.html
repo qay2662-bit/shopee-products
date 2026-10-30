@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threads 貼文管理</title>
+<style>
+body{font-family:Arial;background:#f5f5f5;margin:0;padding:20px}
+.container{max-width:650px;margin:auto;background:white;padding:20px;border-radius:15px}
+h2{text-align:center}
+textarea,input,button{width:100%;box-sizing:border-box;padding:12px;margin:8px 0;border-radius:8px;border:1px solid #ddd;font-size:16px}
+button{background:#111;color:white;border:0;cursor:pointer}
+.post{background:#f3f3f3;padding:12px;border-radius:10px;margin-top:12px;white-space:pre-wrap}
+.actions{display:flex;gap:8px}
+.actions button{flex:1}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Threads 貼文管理</h2>
+
+<textarea id="content" rows="6" placeholder="輸入 Threads 貼文內容..."></textarea>
+<input id="time" type="datetime-local">
+<button onclick="addPost()">新增貼文</button>
+
+<h3>貼文列表</h3>
+<div id="posts"></div>
+</div>
+
+<script>
+let posts=JSON.parse(localStorage.getItem("threadsPosts")||"[]");
+
+function save(){
+localStorage.setItem("threadsPosts",JSON.stringify(posts));
+render();
+}
+
+function addPost(){
+let content=document.getElementById("content").value.trim();
+let time=document.getElementById("time").value;
+if(!content){alert("請輸入貼文內容");return;}
+posts.push({content,time});
+document.getElementById("content").value="";
+document.getElementById("time").value="";
+save();
+}
+
+function editPost(i){
+let value=prompt("修改貼文內容",posts[i].content);
+if(value!==null){
+posts[i].content=value;
+save();
+}
+}
+
+function deletePost(i){
+if(confirm("確定刪除？")){
+posts.splice(i,1);
+save();
+}
+}
+
+function render(){
+let box=document.getElementById("posts");
+box.innerHTML="";
+posts.forEach((p,i)=>{
+let div=document.createElement("div");
+div.className="post";
+let text=document.createElement("div");
+text.textContent=p.content+"\n發文時間："+(p.time||"未設定");
+div.appendChild(text);
+let actions=document.createElement("div");
+actions.className="actions";
+let edit=document.createElement("button");
+edit.textContent="編輯";
+edit.onclick=()=>editPost(i);
+let del=document.createElement("button");
+del.textContent="刪除";
+del.onclick=()=>deletePost(i);
+actions.append(edit,del);
+div.appendChild(actions);
+box.appendChild(div);
+});
+}
+render();
+</script>
+</body>
+</html>
