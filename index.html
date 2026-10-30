@@ -350,43 +350,76 @@ window.addEventListener('scroll', () => $('up').classList.toggle('on', window.sc
 $('up').addEventListener('click', () => window.scrollTo({top:0}));
 refresh();
 </script>  
-<div id="auto-post-tool" style="max-width:700px;margin:20px auto;padding:16px;border:1px solid #ddd;border-radius:12px;">  
-  <h2>🛒 商品推薦貼文產生器</h2>  
-  <p>產生商品推薦文案，方便複製到 Threads 或 Po Once。</p>  
-  <button onclick="generatePosts()" style="padding:12px;background:#ee4d2d;color:white;border:0;border-radius:8px;">產生推薦貼文</button>  
-  <button onclick="copyPosts()" style="padding:12px;border:0;border-radius:8px;">複製全部貼文</button>  
-  <textarea id="generated-posts" style="width:100%;height:260px;margin-top:12px;box-sizing:border-box;" placeholder="產生的貼文會顯示在這裡"></textarea>  
-  <p style="font-size:13px;color:#666;">注意：這個功能只會產生文案，不會直接發布到 Threads。</p>  
-</div><script>  
-function generatePosts() {  
-  const box = document.getElementById('generated-posts');  
-  let list = [];  if (typeof products !== 'undefined' && Array.isArray(products)) {
-list = products;
-} else if (typeof window.products !== 'undefined' && Array.isArray(window.products)) {
-list = window.products;
-}
+<div id="auto-post-tool" style="max-width:700px;margin:20px auto;padding:16px;border:1px solid #ddd;border-radius:12px;">
+  <h2>🛒 商品推薦貼文產生器</h2>
+  <p>每次隨機挑選 10 個商品，產生推薦文案。</p>
 
-if (!list.length) {
-box.value = '目前無法自動讀取商品資料。請先確認商品清單的程式格式。';
-return;
-}
+  <button onclick="generatePosts()" style="padding:12px;background:#ee4d2d;color:white;border:0;border-radius:8px;">
+    產生推薦貼文
+  </button>
 
-box.value = list.map((p, i) => {
-const name = p.name || p.title || p.productName || '今日推薦好物';
-const link = p.link || p.url || p.affiliateLink || p.affiliate_url || '';
-return 🔥 好物推薦｜${name}\n\n分享一個實用好物，有需要可以看看商品詳情！\n\n🛒 商品連結：${link}\n\n#好物推薦 #生活好物;
-}).join('\n\n--------------------\n\n');
+  <button onclick="copyPosts()" style="padding:12px;border:0;border-radius:8px;">
+    複製全部貼文
+  </button>
+
+  <textarea id="generated-posts" style="width:100%;height:300px;margin-top:12px;box-sizing:border-box;" placeholder="產生的貼文會顯示在這裡"></textarea>
+
+  <p style="font-size:13px;color:#666;">文案可複製到 Facebook、Threads 或 Po Once。</p>
+</div>
+
+<script>
+function generatePosts() {
+  const box = document.getElementById('generated-posts');
+
+  if (typeof products === 'undefined' || !Array.isArray(products) || !products.length) {
+    box.value = '目前讀取不到商品資料，請檢查商品清單。';
+    return;
+  }
+
+  const list = [...products]
+    .filter(p => p.n && p.u)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 10);
+
+  if (!list.length) {
+    box.value = '找不到有商品名稱和推廣連結的商品。';
+    return;
+  }
+
+  box.value = list.map(p => {
+    return `🔥 今日好物推薦
+
+${p.n}
+
+💰 參考價格：NT$${p.p || '請看蝦皮商品頁'}
+
+🛒 商品連結：
+${p.u}
+
+喜歡的朋友可以點進去看看！
+
+#好物推薦 #蝦皮好物 #生活好物`;
+  }).join('\n\n--------------------\n\n');
 }
 
 function copyPosts() {
-const box = document.getElementById('generated-posts');
-box.select();
-box.setSelectionRange(0, box.value.length);
-if (navigator.clipboard && window.isSecureContext) {
-navigator.clipboard.writeText(box.value).then(() => alert('已複製貼文！')).catch(() => alert('請長按文字並選擇複製。'));
-} else {
-alert('請長按文字並選擇複製。');
-}
+  const box = document.getElementById('generated-posts');
+
+  if (!box.value.trim()) {
+    alert('請先按產生推薦貼文！');
+    return;
+  }
+
+  box.select();
+  box.setSelectionRange(0, box.value.length);
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(box.value)
+      .then(() => alert('已複製貼文！'))
+      .catch(() => alert('請長按文字並選擇複製。'));
+  } else {
+    alert('請長按文字並選擇複製。');
+  }
 }
 </script>
 
