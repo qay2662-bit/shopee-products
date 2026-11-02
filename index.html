@@ -379,7 +379,7 @@ function generatePosts() {
   const list = [...products]
     .filter(p => p.n && p.u)
     .sort(() => Math.random() - 0.5)
-    .slice(0, 10);
+    .slice(0, 1);
 
   if (!list.length) {
     box.value = '找不到有商品名稱和推廣連結的商品。';
